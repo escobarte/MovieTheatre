@@ -1,0 +1,78 @@
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Макет экрана «Всё кино»: переключатель типа, жанровые пилюли, вторая строка фильтров, активные условия с кнопкой сброса, сортировка и сетка постеров.</h2>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&display=swap');
+.ac{font-family:'Onest',sans-serif;background:#0B0B0D;color:#F5F5F7;border-radius:12px;padding:18px}
+.ac-ph{background:#1E1E23;border-radius:6px;aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;color:#34343C}
+.ac-pill{font-size:13px;padding:7px 15px;border-radius:999px;color:#A1A1AA;white-space:nowrap}
+.ac-pill.on{background:#E5142B;color:#fff;font-weight:500}
+.ac-sel{font-size:12px;color:#A1A1AA;background:#16161A;border-radius:999px;padding:7px 14px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.ac-seg{font-size:12.5px;padding:7px 17px;border-radius:999px;color:#A1A1AA}
+.ac-cap{font-size:12.5px;font-weight:500;margin-top:9px}
+.ac-mt{display:flex;justify-content:space-between;margin-top:4px;font-size:11.5px;color:#6B6B73}
+</style>
+<div style="background:var(--surface-1);border-radius:12px;padding:14px">
+<div class="ac">
+
+  <div style="display:flex;align-items:center;gap:24px;padding-bottom:18px">
+    <span style="font-weight:700;font-size:15px;letter-spacing:.1em">MOVIE<span style="color:#E5142B">_</span>THEATRE</span>
+    <span style="font-size:13px;color:#A1A1AA">Главная</span>
+    <span style="font-size:13px;color:#F5F5F7;font-weight:500">Всё кино</span>
+    <span style="font-size:13px;color:#A1A1AA">Списки</span>
+    <span style="font-size:13px;color:#A1A1AA">Статистика</span>
+    <span style="flex:1"></span>
+    <i class="ti ti-search" style="font-size:17px;color:#A1A1AA" aria-hidden="true"></i>
+    <span style="font-size:12.5px;font-weight:500;padding:9px 18px;border-radius:999px;background:#E5142B;color:#fff;display:inline-flex;align-items:center;gap:7px"><i class="ti ti-plus" style="font-size:15px" aria-hidden="true"></i>Добавить</span>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:14px">
+    <span style="font-size:22px;font-weight:700">Всё кино</span>
+    <span style="flex:1"></span>
+    <div style="background:#16161A;border-radius:999px;padding:3px;display:flex">
+      <span class="ac-seg" style="background:#2E2E36;color:#F5F5F7;font-weight:500">Всё</span>
+      <span class="ac-seg">Фильмы</span>
+      <span class="ac-seg">Сериалы</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:6px;margin-top:16px;overflow:hidden">
+    <span class="ac-pill on">Драма</span><span class="ac-pill">Триллер</span><span class="ac-pill on">Фантастика</span><span class="ac-pill">Криминал</span><span class="ac-pill">Комедия</span><span class="ac-pill">Документальные</span>
+  </div>
+
+  <div style="display:flex;gap:7px;margin-top:11px;flex-wrap:wrap">
+    <span class="ac-sel">Статус <i class="ti ti-chevron-down" style="font-size:13px" aria-hidden="true"></i></span>
+    <span class="ac-sel">Десятилетие <i class="ti ti-chevron-down" style="font-size:13px" aria-hidden="true"></i></span>
+    <span class="ac-sel">Страна <i class="ti ti-chevron-down" style="font-size:13px" aria-hidden="true"></i></span>
+    <span class="ac-sel" style="color:#F5F5F7;background:#26262C">Файл: скачан <i class="ti ti-chevron-down" style="font-size:13px" aria-hidden="true"></i></span>
+    <span class="ac-sel">Хранилище <i class="ti ti-chevron-down" style="font-size:13px" aria-hidden="true"></i></span>
+    <span class="ac-sel">Хронометраж <i class="ti ti-chevron-down" style="font-size:13px" aria-hidden="true"></i></span>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid #1E1E23">
+    <span style="font-size:12.5px;color:#A1A1AA"><span style="color:#F5F5F7;font-weight:500">38</span> из 247</span>
+    <span style="font-size:12px;color:#E5142B">Сбросить фильтры</span>
+    <span style="flex:1"></span>
+    <span class="ac-sel">Сортировка: моя оценка <i class="ti ti-chevron-down" style="font-size:13px" aria-hidden="true"></i></span>
+    <span style="display:flex;align-items:center;gap:8px">
+      <i class="ti ti-star-filled" style="font-size:14px;color:#F5B01A" aria-hidden="true"></i>
+      <span style="width:72px;height:4px;border-radius:2px;background:#26262C;position:relative;display:inline-block"><span style="position:absolute;left:0;top:0;height:4px;width:50px;border-radius:2px;background:#F5B01A"></span></span>
+      <span style="font-size:12px;color:#A1A1AA">8+</span>
+    </span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:16px">
+    <div><div class="ac-ph"><i class="ti ti-photo" style="font-size:19px" aria-hidden="true"></i></div><div class="ac-cap">Сталкер</div><div class="ac-mt"><span>1979</span><span style="color:#F5B01A">10</span></div></div>
+    <div><div class="ac-ph"><i class="ti ti-photo" style="font-size:19px" aria-hidden="true"></i></div><div class="ac-cap">Побег</div><div class="ac-mt"><span>1994</span><span style="color:#F5B01A">10</span></div></div>
+    <div><div class="ac-ph"><i class="ti ti-photo" style="font-size:19px" aria-hidden="true"></i></div><div class="ac-cap">Зеркало</div><div class="ac-mt"><span>1975</span><span style="color:#F5B01A">9</span></div></div>
+    <div><div class="ac-ph"><i class="ti ti-photo" style="font-size:19px" aria-hidden="true"></i></div><div class="ac-cap">Возвращение</div><div class="ac-mt"><span>2003</span><span style="color:#F5B01A">9</span></div></div>
+    <div><div class="ac-ph"><i class="ti ti-photo" style="font-size:19px" aria-hidden="true"></i></div><div class="ac-cap">Прибытие</div><div class="ac-mt"><span>2016</span><span style="color:#F5B01A">8</span></div></div>
+    <div><div class="ac-ph"><i class="ti ti-photo" style="font-size:19px" aria-hidden="true"></i></div><div class="ac-cap">Догвилль</div><div class="ac-mt"><span>2003</span><span style="color:#F5B01A">8</span></div></div>
+    <div><div class="ac-ph"><i class="ti ti-photo" style="font-size:19px" aria-hidden="true"></i></div><div class="ac-cap">Аритмия</div><div class="ac-mt"><span>2017</span><span style="color:#F5B01A">8</span></div></div>
+    <div><div class="ac-ph"><i class="ti ti-photo" style="font-size:19px" aria-hidden="true"></i></div><div class="ac-cap">Нелюбовь</div><div class="ac-mt"><span>2017</span><span style="color:#F5B01A">8</span></div></div>
+    <div><div class="ac-ph"><i class="ti ti-photo" style="font-size:19px" aria-hidden="true"></i></div><div class="ac-cap">Солярис</div><div class="ac-mt"><span>1972</span><span style="color:#F5B01A">8</span></div></div>
+    <div><div class="ac-ph"><i class="ti ti-photo" style="font-size:19px" aria-hidden="true"></i></div><div class="ac-cap">Тьма</div><div class="ac-mt"><span>2017</span><span style="color:#F5B01A">9</span></div></div>
+    <div><div class="ac-ph"><i class="ti ti-photo" style="font-size:19px" aria-hidden="true"></i></div><div class="ac-cap">Магнолия</div><div class="ac-mt"><span>1999</span><span style="color:#F5B01A">9</span></div></div>
+    <div><div class="ac-ph"><i class="ti ti-photo" style="font-size:19px" aria-hidden="true"></i></div><div class="ac-cap">Левиафан</div><div class="ac-mt"><span>2014</span><span style="color:#F5B01A">8</span></div></div>
+  </div>
+
+</div>
+</div>

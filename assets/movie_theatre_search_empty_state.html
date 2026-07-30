@@ -1,0 +1,64 @@
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Макет поискового оверлея: запрос ничего не нашёл в коллекции, поэтому ниже сразу показаны результаты из TMDB с кнопками добавления.</h2>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&display=swap');
+.sr{font-family:'Onest',sans-serif;background:#0B0B0D;color:#F5F5F7;border-radius:12px;padding:22px}
+.sr-h{font-size:11px;font-weight:500;letter-spacing:.1em;color:#5E5E67}
+.sr-row{display:flex;align-items:center;gap:14px;padding:11px 12px;border-radius:8px}
+.sr-th{width:38px;height:57px;border-radius:4px;background:#1E1E23;display:flex;align-items:center;justify-content:center;color:#34343C;flex-shrink:0}
+</style>
+<div style="background:var(--surface-1);border-radius:12px;padding:14px">
+<div class="sr">
+
+  <div style="display:flex;align-items:center;gap:14px;background:#16161A;border-radius:10px;padding:16px 18px">
+    <i class="ti ti-search" style="font-size:20px;color:#6B6B73" aria-hidden="true"></i>
+    <span style="font-size:18px">интерстел</span>
+    <span style="width:1px;height:22px;background:#E5142B"></span>
+    <span style="flex:1"></span>
+    <i class="ti ti-x" style="font-size:19px;color:#6B6B73" aria-hidden="true"></i>
+  </div>
+
+  <div class="sr-h" style="margin-top:24px">В КОЛЛЕКЦИИ</div>
+  <div style="background:#16161A;border-radius:10px;padding:26px;margin-top:11px;text-align:center">
+    <i class="ti ti-mood-empty" style="font-size:26px;color:#3A3A42" aria-hidden="true"></i>
+    <div style="font-size:14px;font-weight:500;margin-top:11px">Ничего не нашлось</div>
+    <div style="font-size:12.5px;color:#6B6B73;margin-top:5px">Ни в названиях, ни у режиссёров, ни в тегах</div>
+  </div>
+
+  <div style="display:flex;align-items:baseline;gap:9px;margin-top:26px">
+    <span class="sr-h">НАЙТИ И ДОБАВИТЬ</span>
+    <span style="font-size:11px;color:#3A3A42">TMDB</span>
+  </div>
+
+  <div style="margin-top:9px">
+    <div class="sr-row" style="background:#16161A">
+      <div class="sr-th"><i class="ti ti-photo" style="font-size:16px" aria-hidden="true"></i></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:500">Интерстеллар</div>
+        <div style="font-size:12px;color:#6B6B73;margin-top:3px">2014 · Interstellar · Кристофер Нолан</div>
+      </div>
+      <span style="font-size:12.5px;font-weight:500;padding:8px 16px;border-radius:999px;background:#E5142B;color:#fff">Добавить</span>
+    </div>
+    <div class="sr-row">
+      <div class="sr-th"><i class="ti ti-photo" style="font-size:16px" aria-hidden="true"></i></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:500">Интерстеллар: Съёмки</div>
+        <div style="font-size:12px;color:#6B6B73;margin-top:3px">2014 · документальный · Тоби Хауэлл</div>
+      </div>
+      <i class="ti ti-plus" style="font-size:18px;color:#6B6B73" aria-hidden="true"></i>
+    </div>
+    <div class="sr-row">
+      <div class="sr-th"><i class="ti ti-photo" style="font-size:16px" aria-hidden="true"></i></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:500">Интерстелла 5555</div>
+        <div style="font-size:12px;color:#6B6B73;margin-top:3px">2003 · аниме · Кадзухиса Такэноути</div>
+      </div>
+      <i class="ti ti-plus" style="font-size:18px;color:#6B6B73" aria-hidden="true"></i>
+    </div>
+  </div>
+
+  <div style="font-size:11.5px;color:#5E5E67;margin-top:18px;display:flex;gap:16px">
+    <span>↑ ↓ выбрать</span><span>Enter добавить</span><span>Esc закрыть</span>
+  </div>
+
+</div>
+</div>
