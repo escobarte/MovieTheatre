@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Onest } from 'next/font/google';
 
+import { CardProvider } from '@/components/CardProvider';
 import { CollectionProvider } from '@/components/CollectionProvider';
 import { Header } from '@/components/Header';
 
@@ -28,10 +29,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ru" className={onest.variable}>
       <body>
         <CollectionProvider>
-          <div className="mx-auto w-full max-w-[1280px] px-[18px]">
-            <Header />
-            {children}
-          </div>
+          <CardProvider>
+            <div className="mx-auto w-full max-w-[1280px] px-[18px]">
+              <Header />
+              {children}
+            </div>
+          </CardProvider>
         </CollectionProvider>
       </body>
     </html>

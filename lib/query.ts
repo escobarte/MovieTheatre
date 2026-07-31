@@ -18,7 +18,6 @@ export const QP = {
   runtime: 'runtime',
   rewatch: 'rewatch',
   favorite: 'fav',
-  added: 'added',
   min: 'min',
   minOf: 'minof',
   sort: 'sort',

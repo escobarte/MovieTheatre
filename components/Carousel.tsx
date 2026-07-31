@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { STATUS_LABELS, addedLabel, type Entry } from '@/lib/collection';
 
+import { useCard } from './CardProvider';
+
 const GAP = 12;
 
 /**
@@ -121,25 +123,31 @@ export function Carousel({ entries }: { entries: Entry[] }) {
 }
 
 function Card({ entry }: { entry: Entry }) {
+  const { openCard } = useCard();
   const rating = entry.rating ?? entry.ratingKp;
   // По 5.2 в карточке год и режиссёр; у сериала в этом поле создатель.
   const meta = [entry.year, entry.director].filter(Boolean).join(' · ');
 
   return (
-    <article className="rounded-md bg-surface p-[10px]">
-      <div className="flex aspect-[16/9] items-center justify-center rounded-sm bg-surface-2 text-icon-dim">
+    <button
+      type="button"
+      onClick={() => openCard(entry.id)}
+      aria-label={`${entry.title}: открыть карточку`}
+      className="block w-full rounded-md bg-surface p-[10px] text-left"
+    >
+      <span className="flex aspect-[16/9] items-center justify-center rounded-sm bg-surface-2 text-icon-dim">
         <ImageIcon size={22} strokeWidth={1.5} />
-      </div>
+      </span>
 
-      <div className="mt-[11px] text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">
+      <span className="mt-[11px] block text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">
         {addedLabel(entry.createdAt)}
-      </div>
+      </span>
 
-      <h3 className="mt-[5px] line-clamp-1 text-[15px] font-bold">{entry.title}</h3>
+      <span className="mt-[5px] line-clamp-1 block text-[15px] font-bold">{entry.title}</span>
 
-      <div className="mt-1 line-clamp-1 text-[11.5px] text-text-3">{meta || '—'}</div>
+      <span className="mt-1 line-clamp-1 block text-[11.5px] text-text-3">{meta || '—'}</span>
 
-      <div className="mt-[9px] flex items-center gap-[6px] text-[11.5px]">
+      <span className="mt-[9px] flex items-center gap-[6px] text-[11.5px]">
         {rating !== null && (
           <>
             <Star size={12} strokeWidth={1.5} className="fill-gold text-gold" />
@@ -148,8 +156,8 @@ function Card({ entry }: { entry: Entry }) {
           </>
         )}
         <span className="text-text-2">{statusLabel(entry)}</span>
-      </div>
-    </article>
+      </span>
+    </button>
   );
 }
 

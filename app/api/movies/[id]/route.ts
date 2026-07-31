@@ -49,6 +49,24 @@ const EDITABLE = new Set([
   'quality',
 ]);
 
+/** Полная карточка — со всем, что не попадает в облегчённую выдачу. */
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const id = Number((await params).id);
+  if (!Number.isInteger(id)) {
+    return NextResponse.json({ error: 'Неверный id' }, { status: 400 });
+  }
+
+  try {
+    const [movie] = await getDb().select().from(movies).where(eq(movies.id, id)).limit(1);
+    if (!movie) return NextResponse.json({ error: 'Запись не найдена' }, { status: 404 });
+
+    return NextResponse.json({ movie });
+  } catch (error) {
+    console.error('[api/movies GET one]', error);
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
+}
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   // TODO (этап 7): проверка cookie на мутирующих роутах.
   const id = Number((await params).id);
