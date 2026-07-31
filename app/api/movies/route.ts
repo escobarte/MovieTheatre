@@ -11,6 +11,12 @@ export const dynamic = 'force-dynamic';
  * Облегчённые поля по разделу 4: без overview, cast, producers, note и
  * backdropUrl. При 2000 записей полная выдача весила бы мегабайты,
  * облегчённая грузится один раз за сессию.
+ *
+ * Сверх перечисленного в разделе 4 добавлены fileStatus, storage, quality и
+ * прогресс по сериалу: без них не собрать полку «Смотрю сейчас» и «Буду
+ * смотреть, уже скачано» (5.2) и не отфильтровать по файлу, хранилищу и
+ * качеству (5.4) — а фильтрация по условию идёт целиком в памяти клиента.
+ * Это короткие строки и числа, вес выдачи почти не меняется.
  */
 const lightColumns = {
   id: movies.id,
@@ -32,6 +38,11 @@ const lightColumns = {
   tags: movies.tags,
   favorite: movies.favorite,
   createdAt: movies.createdAt,
+  fileStatus: movies.fileStatus,
+  storage: movies.storage,
+  quality: movies.quality,
+  progressSeason: movies.progressSeason,
+  progressEpisode: movies.progressEpisode,
 };
 
 export async function GET() {

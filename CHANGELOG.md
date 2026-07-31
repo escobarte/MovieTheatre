@@ -11,6 +11,18 @@
 <!-- Новые записи добавляются ниже этой строки, каждая сверху -->
 
 ## 2026-07-31
+Этап 3, первая половина: каркас интерфейса (шапка, навигация, загрузка коллекции
+один раз за сессию), Главная с каруселью, строкой жанров и тремя полками, экран
+«Всё кино» с сеткой постеров. Фильтры пока только отрисованы. Добавлен PATCH
+/api/movies/[id] и правка личных полей на служебной странице — иначе полки нечем
+наполнить до появления карточки.
+Файлы: app/layout.tsx, app/page.tsx, app/vse-kino/page.tsx, app/spiski/page.tsx,
+app/statistika/page.tsx, app/dev/page.tsx, app/api/movies/route.ts,
+app/api/movies/[id]/route.ts, components/Header.tsx, components/CollectionProvider.tsx,
+components/Carousel.tsx, components/Shelf.tsx, components/Poster.tsx,
+components/GenreDoor.tsx, lib/collection.ts, lib/query.ts, lib/db/health.ts (удалён)
+
+## 2026-07-31
 Этап 2 (данные): серверные клиенты TMDB и Кинопоиска, слияние по разделу 3.3,
 эндпоинты GET /api/search, GET и POST /api/movies, временная страница /dev для
 ручной проверки парсинга. Отказ Кинопоиска добавление не роняет.

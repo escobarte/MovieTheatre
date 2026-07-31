@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-import type { Movie } from '@/lib/db/schema';
+import { FILE_STATUS_LABELS, STATUS_LABELS, type LightRow } from '@/lib/collection';
+import type { FileStatus, Movie, Status } from '@/lib/db/schema';
 
 /**
- * Временная страница для ручной проверки парсинга на этапе 2.
- * Вёрстки здесь нет намеренно — экраны делаются на этапе 3, а эта
- * страница удаляется на этапе 7.
+ * Временная служебная страница: поиск в TMDB, добавление и правка личных
+ * полей. Вёрстки здесь нет намеренно — экраны делаются отдельно, а сама
+ * страница удаляется вместе с появлением карточки записи и авторизации.
  */
 
 type Candidate = {
@@ -21,15 +22,28 @@ type Candidate = {
   added: boolean;
 };
 
-type LightMovie = Pick<Movie, 'id' | 'kind' | 'title' | 'year' | 'director' | 'ratingKp' | 'ratingImdb' | 'ratingTmdb'>;
-
 export default function DevPage() {
   const [query, setQuery] = useState('');
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [saved, setSaved] = useState<Movie | null>(null);
-  const [collection, setCollection] = useState<LightMovie[] | null>(null);
+  const [collection, setCollection] = useState<LightRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const loadCollection = useCallback(async () => {
+    try {
+      const res = await fetch('/api/movies');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? res.statusText);
+      setCollection(data.movies);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCollection();
+  }, [loadCollection]);
 
   async function search(event: React.FormEvent) {
     event.preventDefault();
@@ -66,6 +80,7 @@ export default function DevPage() {
       setCandidates((prev) =>
         prev.map((c) => (c.tmdbId === candidate.tmdbId ? { ...c, added: true } : c)),
       );
+      await loadCollection();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -73,24 +88,25 @@ export default function DevPage() {
     }
   }
 
-  async function loadCollection() {
-    setBusy('collection');
+  async function patch(id: number, fields: Partial<LightRow>) {
+    setCollection((prev) => prev.map((m) => (m.id === id ? { ...m, ...fields } : m)));
     setError(null);
     try {
-      const res = await fetch('/api/movies');
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? res.statusText);
-      setCollection(data.movies);
+      const res = await fetch(`/api/movies/${id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(fields),
+      });
+      if (!res.ok) throw new Error((await res.json()).error ?? res.statusText);
     } catch (e) {
       setError((e as Error).message);
-    } finally {
-      setBusy(null);
+      await loadCollection();
     }
   }
 
   return (
-    <main className="mx-auto flex max-w-[820px] flex-col gap-6 p-6">
-      <h1 className="text-[17px] font-bold">Проверка парсинга — этап 2</h1>
+    <main className="flex flex-col gap-6 pb-16">
+      <h1 className="text-[17px] font-bold">Служебная страница</h1>
 
       <form onSubmit={search} className="flex gap-2">
         <input
@@ -106,13 +122,6 @@ export default function DevPage() {
         >
           {busy === 'search' ? 'Ищу…' : 'Найти'}
         </button>
-        <button
-          type="button"
-          onClick={loadCollection}
-          className="rounded-pill bg-surface-3 px-[18px] py-[9px] font-medium"
-        >
-          Коллекция
-        </button>
       </form>
 
       {error && <p className="rounded-sm bg-surface p-3 text-text-2">Ошибка: {error}</p>}
@@ -120,7 +129,10 @@ export default function DevPage() {
       {candidates.length > 0 && (
         <ul className="flex flex-col gap-2">
           {candidates.map((c) => (
-            <li key={`${c.kind}-${c.tmdbId}`} className="flex items-center gap-3 rounded-sm bg-surface p-2">
+            <li
+              key={`${c.kind}-${c.tmdbId}`}
+              className="flex items-center gap-3 rounded-sm bg-surface p-2"
+            >
               {c.posterUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={c.posterUrl} alt="" width={40} className="rounded-xs" />
@@ -162,21 +174,136 @@ export default function DevPage() {
         </section>
       )}
 
-      {collection && (
-        <section>
-          <h2 className="mb-2 text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">
-            Коллекция — {collection.length}
-          </h2>
-          <ul className="flex flex-col gap-1">
-            {collection.map((m) => (
-              <li key={m.id} className="text-text-2">
-                {m.id}. {m.title} ({m.year ?? '—'}) · {m.kind} · {m.director ?? '—'} · КП{' '}
-                {m.ratingKp ?? '—'} · IMDb {m.ratingImdb ?? '—'} · TMDB {m.ratingTmdb ?? '—'}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <section>
+        <h2 className="mb-2 text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">
+          Коллекция — {collection.length}. Личные поля правятся здесь, пока нет карточки
+        </h2>
+
+        <ul className="flex flex-col gap-2">
+          {collection.map((m) => (
+            <li key={m.id} className="flex flex-wrap items-center gap-2 rounded-sm bg-surface p-2">
+              <span className="min-w-[220px] flex-1">
+                {m.title}{' '}
+                <span className="text-text-3">
+                  {m.year ?? '—'} · {m.kind === 'tv' ? 'сериал' : 'фильм'}
+                </span>
+              </span>
+
+              <Select
+                value={m.status}
+                onChange={(status) => patch(m.id, { status: status as Status })}
+                options={Object.entries(STATUS_LABELS)}
+              />
+
+              <Select
+                value={String(m.rating ?? '')}
+                onChange={(v) => patch(m.id, { rating: v ? Number(v) : null })}
+                options={[
+                  ['', 'оценка —'],
+                  ...Array.from({ length: 10 }, (_, i) => [String(i + 1), `оценка ${i + 1}`] as [string, string]),
+                ]}
+              />
+
+              <Select
+                value={m.fileStatus}
+                onChange={(v) => patch(m.id, { fileStatus: v as FileStatus })}
+                options={Object.entries(FILE_STATUS_LABELS).map(([k, label]) => [k, `файл: ${label}`])}
+              />
+
+              <Toggle
+                label="пересмотреть"
+                on={m.rewatch === 1}
+                onChange={(on) => patch(m.id, { rewatch: on ? 1 : 0 })}
+              />
+
+              <Toggle
+                label="избранное"
+                on={m.favorite === 1}
+                onChange={(on) => patch(m.id, { favorite: on ? 1 : 0 })}
+              />
+
+              {m.kind === 'tv' && (
+                <span className="flex items-center gap-1 text-text-3">
+                  S
+                  <NumBox
+                    value={m.progressSeason}
+                    onChange={(v) => patch(m.id, { progressSeason: v })}
+                  />
+                  E
+                  <NumBox
+                    value={m.progressEpisode}
+                    onChange={(v) => patch(m.id, { progressEpisode: v })}
+                  />
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
     </main>
+  );
+}
+
+function Select({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: [string, string][];
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="rounded-pill bg-surface-3 px-[14px] py-[7px] text-[12px]"
+    >
+      {options.map(([key, label]) => (
+        <option key={key} value={key}>
+          {label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function Toggle({
+  label,
+  on,
+  onChange,
+}: {
+  label: string;
+  on: boolean;
+  onChange: (on: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!on)}
+      className={`rounded-pill px-[14px] py-[7px] text-[12px] ${
+        on ? 'bg-red font-medium text-white' : 'bg-surface-3 text-text-2'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function NumBox({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (value: number | null) => void;
+}) {
+  return (
+    <input
+      type="number"
+      min={0}
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+      className="w-[52px] rounded-xs bg-surface-3 px-2 py-1 text-[12px] text-text caret-red outline-none"
+    />
   );
 }

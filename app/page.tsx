@@ -1,70 +1,88 @@
-import { CircleAlert, CircleCheck, Database } from 'lucide-react';
+'use client';
 
-import { checkDb } from '@/lib/db/health';
+import { HardDriveDownload, Plus, PlayCircle, RotateCw } from 'lucide-react';
+import Link from 'next/link';
 
-// Проверка базы делается на каждый запрос, а не на сборке.
-export const dynamic = 'force-dynamic';
+import { Carousel } from '@/components/Carousel';
+import { GenreDoor } from '@/components/GenreDoor';
+import { Shelf } from '@/components/Shelf';
+import { useCollection } from '@/components/CollectionProvider';
+import { QP, catalogHref } from '@/lib/query';
 
-export default async function HomePage() {
-  const health = await checkDb();
+const RECENT = 12;
 
-  if (health.ok) {
-    console.log('[db] Turso отвечает. Таблицы:', health.tables.join(', ') || '— нет —');
-  } else {
-    console.error('[db] Turso недоступен:', health.error);
-  }
+export default function HomePage() {
+  const { entries, loading, error } = useCollection();
+
+  if (loading) return <Notice text="Загружаю коллекцию" />;
+  if (error) return <Notice text={`Коллекция не загрузилась: ${error}`} />;
+  if (entries.length === 0) return <EmptyCollection />;
+
+  const recent = [...entries]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id)
+    .slice(0, RECENT);
+
+  const watching = entries.filter((e) => e.kind === 'tv' && e.status === 'watching');
+  const rewatch = entries.filter((e) => e.rewatch === 1);
+  const readyToWatch = entries.filter((e) => e.status === 'planned' && e.fileStatus === 'have');
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-[720px] flex-col justify-center gap-8 px-6 py-16">
-      <div>
-        <span className="text-[15px] font-bold tracking-[.1em] uppercase">Movie_Theatre</span>
-        <div className="mt-1 h-[2px] w-9 bg-red" />
-      </div>
+    <div className="pb-16">
+      <Carousel entries={recent} />
 
-      <section className="rounded-lg bg-surface p-5">
-        <h1 className="flex items-center gap-2 text-[17px] font-bold">
-          <Database size={18} strokeWidth={1.5} className="text-red" />
-          Проверка базы
-        </h1>
+      <GenreDoor entries={entries} />
 
-        {health.ok ? (
-          <>
-            <p className="mt-3 flex items-center gap-2 text-text-2">
-              <CircleCheck size={16} strokeWidth={1.5} />
-              Turso отвечает.
-            </p>
-            <p className="mt-4 text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">
-              Таблицы
-            </p>
-            {health.tables.length > 0 ? (
-              <ul className="mt-2 flex flex-wrap gap-2">
-                {health.tables.map((name) => (
-                  <li
-                    key={name}
-                    className="rounded-pill bg-surface-3 px-[15px] py-[7px] text-text-2"
-                  >
-                    {name}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-text-3">Пусто — миграция ещё не применена.</p>
-            )}
-          </>
-        ) : (
-          <>
-            <p className="mt-3 flex items-center gap-2 text-text-2">
-              <CircleAlert size={16} strokeWidth={1.5} />
-              База не отвечает.
-            </p>
-            <p className="mt-2 font-mono text-[11.5px] break-words text-text-3">{health.error}</p>
-          </>
-        )}
-      </section>
+      <Shelf
+        icon={PlayCircle}
+        title="Смотрю сейчас"
+        entries={watching}
+        href={catalogHref({ [QP.type]: 'tv', [QP.status]: 'watching' })}
+        badge={(e) =>
+          e.progressSeason && e.progressEpisode
+            ? `S${e.progressSeason} · E${e.progressEpisode}`
+            : undefined
+        }
+      />
 
-      <p className="text-text-3">
-        Этап 1 — каркас. Экраны появятся на третьем этапе.
+      <Shelf
+        icon={RotateCw}
+        title="Хочу пересмотреть"
+        entries={rewatch}
+        href={catalogHref({ [QP.rewatch]: '1' })}
+      />
+
+      <Shelf
+        icon={HardDriveDownload}
+        title="Буду смотреть, уже скачано"
+        entries={readyToWatch}
+        href={catalogHref({ [QP.status]: 'planned', [QP.file]: 'have' })}
+      />
+
+      {/* Полка «Мои списки» появится вместе с API подборок на этапе 5.
+          Пустая полка не отображается (5.2), поэтому её здесь просто нет. */}
+    </div>
+  );
+}
+
+function Notice({ text }: { text: string }) {
+  return <p className="py-10 text-text-3">{text}</p>;
+}
+
+/** Третье пустое состояние (5.6): только приглашение, без полок и фильтров. */
+function EmptyCollection() {
+  return (
+    <div className="flex flex-col items-center py-24 text-center">
+      <h1 className="text-[22px] font-bold">Коллекция пуста</h1>
+      <p className="mt-2 max-w-[420px] text-text-2">
+        Здесь появятся последние добавленные, полки и подборки. Начните с первого фильма.
       </p>
-    </main>
+      <Link
+        href="/dev"
+        className="mt-6 inline-flex items-center gap-[7px] rounded-pill bg-red px-[18px] py-[9px] text-[12.5px] font-medium text-white transition-colors duration-[120ms] hover:bg-red-hover"
+      >
+        <Plus size={15} strokeWidth={1.5} />
+        Добавить первый фильм
+      </Link>
+    </div>
   );
 }
