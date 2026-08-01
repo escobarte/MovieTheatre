@@ -38,6 +38,7 @@ export type Filters = {
   storage: string[];
   quality: string[];
   runtime: string[];
+  list: string[];
   rewatch: boolean;
   favorite: boolean;
   min: number;
@@ -56,7 +57,8 @@ export type ListCategory =
   | 'file'
   | 'storage'
   | 'quality'
-  | 'runtime';
+  | 'runtime'
+  | 'list';
 
 export const EMPTY: Filters = {
   type: 'all',
@@ -70,6 +72,7 @@ export const EMPTY: Filters = {
   storage: [],
   quality: [],
   runtime: [],
+  list: [],
   rewatch: false,
   favorite: false,
   min: 0,
@@ -132,6 +135,10 @@ export function valuesOf(entry: Entry, category: ListCategory): string[] {
       const bucket = RUNTIME_BUCKETS.find((b) => b.test(entry.runtime as number));
       return bucket ? [bucket.value] : [];
     }
+    // Состав подборок приходит не из облегчённой выдачи, а из /api/lists —
+    // каталог проставляет его записям перед отбором.
+    case 'list':
+      return entry.lists ?? [];
   }
 }
 
@@ -178,6 +185,7 @@ const LIST_CATEGORIES: ListCategory[] = [
   'storage',
   'quality',
   'runtime',
+  'list',
 ];
 
 /** Все условия, кроме одного — так считаются счётчики этой категории. */
@@ -305,6 +313,7 @@ const LIST_PARAM: Record<ListCategory, string> = {
   storage: QP.storage,
   quality: QP.quality,
   runtime: QP.runtime,
+  list: QP.list,
 };
 
 export function parseFilters(params: URLSearchParams): Filters {
@@ -331,6 +340,7 @@ export function parseFilters(params: URLSearchParams): Filters {
     storage: list(QP.storage),
     quality: list(QP.quality),
     runtime: list(QP.runtime),
+    list: list(QP.list),
     rewatch: params.get(QP.rewatch) === '1',
     favorite: params.get(QP.favorite) === '1',
     min: clampRating(Number(params.get(QP.min))),

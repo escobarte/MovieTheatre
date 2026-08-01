@@ -1,12 +1,13 @@
 'use client';
 
-import { Image as ImageIcon, Play, Star, X } from 'lucide-react';
+import { Check, Image as ImageIcon, Play, Plus, Star, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 import { FILE_STATUS_LABELS, STATUS_LABELS, plural } from '@/lib/collection';
 import type { FileStatus, Movie, Status } from '@/lib/db/schema';
 
 import { useCollection } from './CollectionProvider';
+import { useLists } from './ListsProvider';
 
 /**
  * Карточка записи (5.7). Модальное окно поверх затемнённого экрана — так не
@@ -313,6 +314,10 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
         <Row label="Заметка">
           <EditArea value={movie.note ?? ''} onSave={(note) => save({ note: note || null })} />
         </Row>
+
+        <Row label="Списки">
+          <ListPicker movieId={movie.id} />
+        </Row>
       </Block>
 
       <Block title="Файл">
@@ -361,6 +366,99 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
         </Row>
       </Block>
     </>
+  );
+}
+
+/**
+ * Добавление в подборку прямо из карточки: выбрать существующую или завести
+ * новую. Массового выделения в каталоге пока нет — оно отложено.
+ */
+function ListPicker({ movieId }: { movieId: number }) {
+  const { lists, addToList, putItems, createList } = useLists();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
+
+  const inside = lists.filter((list) => list.items.some((item) => item.movieId === movieId));
+
+  const remove = (listId: number) => {
+    const list = lists.find((l) => l.id === listId);
+    if (!list) return;
+    void putItems(
+      listId,
+      list.items.filter((item) => item.movieId !== movieId),
+    );
+  };
+
+  const create = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!title.trim()) return;
+
+    const created = await createList(title.trim());
+    if (created) await addToList(created.id, movieId);
+    setTitle('');
+    setOpen(false);
+  };
+
+  return (
+    <div className="flex flex-wrap items-start gap-[6px]">
+      {inside.map((list) => (
+        <span
+          key={list.id}
+          className="inline-flex items-center gap-[6px] rounded-pill bg-surface-3 px-[15px] py-[7px] text-[12px]"
+        >
+          {list.title}
+          <button
+            type="button"
+            onClick={() => remove(list.id)}
+            aria-label={`Убрать из «${list.title}»`}
+            className="text-text-3 transition-colors duration-[120ms] hover:text-text"
+          >
+            <X size={13} strokeWidth={1.5} />
+          </button>
+        </span>
+      ))}
+
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="inline-flex items-center gap-[6px] rounded-pill bg-surface-3 px-[15px] py-[7px] text-[12px] text-text-2 transition-colors duration-[120ms] hover:text-text"
+        >
+          <Plus size={13} strokeWidth={1.5} />В список
+        </button>
+
+        {open && (
+          <div className="absolute top-[calc(100%+6px)] left-0 z-10 max-h-[260px] min-w-[220px] overflow-y-auto rounded-lg border border-line bg-surface p-[6px]">
+            {lists.map((list) => {
+              const on = list.items.some((item) => item.movieId === movieId);
+              return (
+                <button
+                  key={list.id}
+                  type="button"
+                  onClick={() => (on ? remove(list.id) : addToList(list.id, movieId))}
+                  className="flex w-full items-center gap-2 rounded-sm px-[10px] py-[6px] text-left text-[12px] transition-colors duration-[120ms] hover:bg-surface-2"
+                >
+                  <span className="w-[14px] shrink-0 text-red">
+                    {on && <Check size={14} strokeWidth={1.5} />}
+                  </span>
+                  <span className={on ? 'text-text' : 'text-text-2'}>{list.title}</span>
+                </button>
+              );
+            })}
+
+            <form onSubmit={create} className="mt-1 border-t border-line pt-[6px]">
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="новая подборка"
+                className="w-full rounded-sm bg-surface-2 px-[10px] py-[6px] text-[12px] caret-red outline-none"
+              />
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

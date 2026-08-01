@@ -1,12 +1,13 @@
 'use client';
 
-import { Shuffle, Star, X } from 'lucide-react';
+import { Bookmark, Shuffle, Star, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useMemo, useState } from 'react';
 
 import { FilterSelect, type Option } from '@/components/catalog/FilterSelect';
 import { PickOne } from '@/components/catalog/PickOne';
 import { useCollection } from '@/components/CollectionProvider';
+import { useLists } from '@/components/ListsProvider';
 import { Poster } from '@/components/Poster';
 import { entriesWord, type Entry } from '@/lib/collection';
 import {
@@ -56,6 +57,7 @@ const SELECTORS: { category: ListCategory; label: string }[] = [
   { category: 'director', label: 'Режиссёр' },
   { category: 'tag', label: 'Тег' },
   { category: 'quality', label: 'Качество' },
+  { category: 'list', label: 'Список' },
 ];
 
 export default function CatalogPage() {
@@ -67,12 +69,34 @@ export default function CatalogPage() {
 }
 
 function Catalog() {
-  const { entries, loading, error } = useCollection();
+  const { entries: raw, loading, error } = useCollection();
+  const { lists, createView } = useLists();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [seed, setSeed] = useState(1);
   const [pick, setPick] = useState<Entry | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [viewTitle, setViewTitle] = useState('');
+
+  /** Состав подборок живёт отдельно от коллекции — сшиваем перед отбором. */
+  const entries = useMemo(() => {
+    if (lists.length === 0) return raw;
+
+    const byMovie = new Map<number, string[]>();
+    for (const list of lists) {
+      for (const item of list.items) {
+        byMovie.set(item.movieId, [...(byMovie.get(item.movieId) ?? []), String(list.id)]);
+      }
+    }
+
+    return raw.map((entry) => ({ ...entry, lists: byMovie.get(entry.id) ?? [] }));
+  }, [raw, lists]);
+
+  const listTitles = useMemo(
+    () => new Map(lists.map((list) => [String(list.id), list.title])),
+    [lists],
+  );
 
   const filters = useMemo(
     () => parseFilters(new URLSearchParams(searchParams.toString())),
@@ -183,7 +207,7 @@ function Catalog() {
           <FilterSelect
             key={category}
             label={label}
-            options={options(entries, filters, category)}
+            options={options(entries, filters, category, category === 'list' ? listTitles : undefined)}
             selected={filters[category]}
             onChange={(next) => update({ [category]: next } as Partial<Filters>)}
           />
@@ -220,6 +244,45 @@ function Catalog() {
             Сбросить все фильтры
           </button>
         )}
+
+        {/* Сохранённый фильтр — имя плюс текущая строка запроса (2.5). */}
+        {filtered &&
+          (saving ? (
+            <form
+              onSubmit={async (event) => {
+                event.preventDefault();
+                if (!viewTitle.trim()) return;
+                await createView(viewTitle.trim(), serializeFilters(filters));
+                setViewTitle('');
+                setSaving(false);
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                autoFocus
+                value={viewTitle}
+                onChange={(e) => setViewTitle(e.target.value)}
+                placeholder="Название фильтра"
+                onKeyDown={(e) => e.key === 'Escape' && setSaving(false)}
+                className="w-[190px] rounded-pill bg-surface-3 px-[14px] py-[7px] text-[12px] caret-red outline-none"
+              />
+              <button
+                type="submit"
+                className="rounded-pill bg-red px-[14px] py-[7px] text-[12px] font-medium text-white transition-colors duration-[120ms] hover:bg-red-hover"
+              >
+                Сохранить
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSaving(true)}
+              className="inline-flex items-center gap-[6px] rounded-pill bg-surface-3 px-[14px] py-[7px] text-[12px] font-medium text-text transition-colors duration-[120ms] hover:bg-surface"
+            >
+              <Bookmark size={13} strokeWidth={1.5} />
+              Сохранить фильтр
+            </button>
+          ))}
 
         <button
           type="button"
@@ -296,11 +359,20 @@ function Catalog() {
   );
 }
 
-function options(entries: Entry[], filters: Filters, category: ListCategory): Option[] {
+function options(
+  entries: Entry[],
+  filters: Filters,
+  category: ListCategory,
+  titles?: Map<string, string>,
+): Option[] {
   const counts = facetCounts(entries, filters, category);
 
   return [...counts]
-    .map(([value, count]) => ({ value, label: labelOf(category, value), count }))
+    .map(([value, count]) => ({
+      value,
+      label: titles?.get(value) ?? labelOf(category, value),
+      count,
+    }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ru'));
 }
 

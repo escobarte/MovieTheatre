@@ -35,6 +35,8 @@ export type Entry = Omit<LightRow, 'genres' | 'countries' | 'tags'> & {
   genres: string[];
   countries: string[];
   tags: string[];
+  /** id подборок, в которых состоит запись. Проставляется каталогом. */
+  lists?: string[];
 };
 
 export const STATUS_LABELS: Record<Status, string> = {

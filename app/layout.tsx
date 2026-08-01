@@ -4,6 +4,7 @@ import { Onest } from 'next/font/google';
 import { CardProvider } from '@/components/CardProvider';
 import { CollectionProvider } from '@/components/CollectionProvider';
 import { Header } from '@/components/Header';
+import { ListsProvider } from '@/components/ListsProvider';
 
 import './globals.css';
 
@@ -29,12 +30,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ru" className={onest.variable}>
       <body>
         <CollectionProvider>
-          <CardProvider>
-            <div className="mx-auto w-full max-w-[1280px] px-[18px]">
-              <Header />
-              {children}
-            </div>
-          </CardProvider>
+          <ListsProvider>
+            <CardProvider>
+              <div className="mx-auto w-full max-w-[1280px] px-[18px]">
+                <Header />
+                {children}
+              </div>
+            </CardProvider>
+          </ListsProvider>
         </CollectionProvider>
       </body>
     </html>

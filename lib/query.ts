@@ -16,6 +16,7 @@ export const QP = {
   storage: 'storage',
   quality: 'quality',
   runtime: 'runtime',
+  list: 'list',
   rewatch: 'rewatch',
   favorite: 'fav',
   min: 'min',

@@ -10,6 +10,17 @@
 
 <!-- Новые записи добавляются ниже этой строки, каждая сверху -->
 
+## 2026-08-01
+Этап 5: API подборок и сохранённых фильтров, экран «Списки» с сеткой обложек и
+отдельной группой фильтров, страница списка с перетаскиванием и полем «почему он
+здесь», добавление в подборку из карточки, кнопка «Сохранить фильтр» в каталоге,
+категория фильтра «список», полка «Мои списки» на Главной.
+Файлы: app/api/lists/route.ts, app/api/lists/[id]/route.ts,
+app/api/lists/[id]/items/route.ts, app/api/views/route.ts,
+components/ListsProvider.tsx, components/MovieCard.tsx, app/spiski/page.tsx,
+app/spiski/[id]/page.tsx, app/page.tsx, app/vse-kino/page.tsx, app/layout.tsx,
+lib/filters.ts, lib/query.ts, lib/collection.ts
+
 ## 2026-07-31
 Карточка записи: модалка по клику на любой постер в сетке, карусели и полке,
 правка полей по клику с сохранением по расфокусировке; после добавления
