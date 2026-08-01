@@ -13,7 +13,7 @@ export const QP = {
   director: 'director',
   tag: 'tag',
   file: 'file',
-  storage: 'storage',
+  disk: 'disk',
   quality: 'quality',
   runtime: 'runtime',
   list: 'list',

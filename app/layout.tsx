@@ -3,6 +3,7 @@ import { Onest } from 'next/font/google';
 
 import { CardProvider } from '@/components/CardProvider';
 import { CollectionProvider } from '@/components/CollectionProvider';
+import { DisksProvider } from '@/components/DisksProvider';
 import { Header } from '@/components/Header';
 import { ListsProvider } from '@/components/ListsProvider';
 
@@ -31,12 +32,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <CollectionProvider>
           <ListsProvider>
-            <CardProvider>
-              <div className="mx-auto w-full max-w-[1280px] px-[18px]">
-                <Header />
-                {children}
-              </div>
-            </CardProvider>
+            <DisksProvider>
+              <CardProvider>
+                <div className="mx-auto w-full max-w-[1280px] px-[18px]">
+                  <Header />
+                  {children}
+                </div>
+              </CardProvider>
+            </DisksProvider>
           </ListsProvider>
         </CollectionProvider>
       </body>

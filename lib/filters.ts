@@ -35,7 +35,7 @@ export type Filters = {
   director: string[];
   tag: string[];
   file: string[];
-  storage: string[];
+  disk: string[];
   quality: string[];
   runtime: string[];
   list: string[];
@@ -55,7 +55,7 @@ export type ListCategory =
   | 'director'
   | 'tag'
   | 'file'
-  | 'storage'
+  | 'disk'
   | 'quality'
   | 'runtime'
   | 'list';
@@ -69,7 +69,7 @@ export const EMPTY: Filters = {
   director: [],
   tag: [],
   file: [],
-  storage: [],
+  disk: [],
   quality: [],
   runtime: [],
   list: [],
@@ -126,8 +126,9 @@ export function valuesOf(entry: Entry, category: ListCategory): string[] {
       return entry.tags;
     case 'file':
       return [entry.fileStatus];
-    case 'storage':
-      return entry.storage ? [entry.storage] : [];
+    // Хранилище заменил диск: он выбирается из заведённых, а не пишется руками.
+    case 'disk':
+      return entry.diskId === null ? [] : [String(entry.diskId)];
     case 'quality':
       return entry.quality ? [entry.quality] : [];
     case 'runtime': {
@@ -182,7 +183,7 @@ const LIST_CATEGORIES: ListCategory[] = [
   'director',
   'tag',
   'file',
-  'storage',
+  'disk',
   'quality',
   'runtime',
   'list',
@@ -310,7 +311,7 @@ const LIST_PARAM: Record<ListCategory, string> = {
   director: QP.director,
   tag: QP.tag,
   file: QP.file,
-  storage: QP.storage,
+  disk: QP.disk,
   quality: QP.quality,
   runtime: QP.runtime,
   list: QP.list,
@@ -337,7 +338,7 @@ export function parseFilters(params: URLSearchParams): Filters {
     director: list(QP.director),
     tag: list(QP.tag),
     file: list(QP.file),
-    storage: list(QP.storage),
+    disk: list(QP.disk),
     quality: list(QP.quality),
     runtime: list(QP.runtime),
     list: list(QP.list),

@@ -25,6 +25,8 @@ export type LightRow = {
   createdAt: string;
   fileStatus: FileStatus;
   storage: string | null;
+  diskId: number | null;
+  sizeGb: number | null;
   quality: string | null;
   progressSeason: number | null;
   progressEpisode: number | null;
@@ -128,6 +130,11 @@ export function plural(n: number, one: string, few: string, many: string): strin
   if (mod10 === 1 && mod100 !== 11) return one;
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
   return many;
+}
+
+/** Гигабайты: целые без хвоста, дробные с одним знаком. */
+export function formatGb(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 /** «247 записей» / «38 записей». */

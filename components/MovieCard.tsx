@@ -7,6 +7,7 @@ import { FILE_STATUS_LABELS, STATUS_LABELS, plural } from '@/lib/collection';
 import type { FileStatus, Movie, Status } from '@/lib/db/schema';
 
 import { useCollection } from './CollectionProvider';
+import { useDisks } from './DisksProvider';
 import { useLists } from './ListsProvider';
 
 /**
@@ -338,13 +339,8 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
           />
         </Row>
 
-        <Row label="Хранилище">
-          <EditText
-            value={movie.storage ?? ''}
-            placeholder="NAS, внешний HDD…"
-            onSave={(storage) => save({ storage: storage || null })}
-            className="w-full"
-          />
+        <Row label="Диск">
+          <DiskField movie={movie} save={save} />
         </Row>
 
         <Row label="Путь">
@@ -366,6 +362,52 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
         </Row>
       </Block>
     </>
+  );
+}
+
+/**
+ * Диск выбирается из заведённых, рядом необязательный вес в ГБ. Вес нужен
+ * для подсчёта занятого места, но без него запись всё равно числится на диске
+ * — просто попадает в «подсчёт неполный».
+ */
+function DiskField({
+  movie,
+  save,
+}: {
+  movie: Movie;
+  save: (fields: Partial<Movie>) => void;
+}) {
+  const { disks, reload } = useDisks();
+
+  const options = [
+    { value: '', label: 'нет диска' },
+    ...disks.map((disk) => ({ value: String(disk.id), label: `Диск ${disk.label}` })),
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-[6px]">
+      <Pills
+        options={options}
+        value={String(movie.diskId ?? '')}
+        onPick={async (value) => {
+          save({ diskId: value ? Number(value) : null });
+          await reload();
+        }}
+      />
+
+      <span className="flex items-center gap-1 text-text-3">
+        <EditNumber
+          value={movie.sizeGb}
+          onSave={async (sizeGb) => {
+            save({ sizeGb });
+            await reload();
+          }}
+          width={60}
+          step="0.1"
+        />
+        ГБ
+      </span>
+    </div>
   );
 }
 
@@ -549,16 +591,19 @@ function EditNumber({
   value,
   onSave,
   width,
+  step,
 }: {
   value: number | null;
   onSave: (value: number | null) => void;
   width: number;
+  step?: string;
 }) {
   return (
     <input
       key={String(value)}
       type="number"
       min={0}
+      step={step}
       defaultValue={value ?? ''}
       onBlur={(e) => {
         const next = e.target.value ? Number(e.target.value) : null;

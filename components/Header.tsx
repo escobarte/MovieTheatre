@@ -10,6 +10,7 @@ const NAV = [
   { href: '/vse-kino', label: 'Всё кино' },
   { href: '/spiski', label: 'Списки' },
   { href: '/statistika', label: 'Статистика' },
+  { href: '/diski', label: 'Диски' },
 ];
 
 export function Header() {

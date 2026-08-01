@@ -20,6 +20,19 @@ export type FileStatus = 'none' | 'downloading' | 'have' | 'deleted';
 
 const nowIso = () => new Date().toISOString();
 
+/** Физические диски, на которых лежит скачанное. Метка — «A», «B», «H». */
+export const disks = sqliteTable(
+  'disks',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    label: text('label').notNull(),
+    sizeGb: real('size_gb').notNull(), // полный объём: диски бывают разного размера
+    note: text('note'),
+    createdAt: text('created_at').notNull().$defaultFn(nowIso),
+  },
+  (t) => [uniqueIndex('disks_label_idx').on(t.label)],
+);
+
 export const movies = sqliteTable(
   'movies',
   {
@@ -63,7 +76,10 @@ export const movies = sqliteTable(
     // --- файл ---
     fileStatus: text('file_status').$type<FileStatus>().notNull().default('none'),
     torrentUrl: text('torrent_url'), // ссылка на раздачу
-    storage: text('storage'), // короткое имя хранилища
+    // storage оставлен для совместимости: в интерфейсе его заменил выбор диска.
+    storage: text('storage'),
+    diskId: integer('disk_id').references(() => disks.id, { onDelete: 'set null' }),
+    sizeGb: real('size_gb'), // вес файла в ГБ, необязательный
     path: text('path'), // папка или полный путь
     quality: text('quality'), // '1080p', '2160p', 'BDRemux', ...
 
@@ -75,6 +91,7 @@ export const movies = sqliteTable(
     index('movies_kind_idx').on(t.kind),
     index('movies_status_idx').on(t.status),
     index('movies_year_idx').on(t.year),
+    index('movies_disk_id_idx').on(t.diskId),
   ],
 );
 
@@ -122,3 +139,5 @@ export type ListItem = typeof listItems.$inferSelect;
 export type NewListItem = typeof listItems.$inferInsert;
 export type SavedView = typeof savedViews.$inferSelect;
 export type NewSavedView = typeof savedViews.$inferInsert;
+export type Disk = typeof disks.$inferSelect;
+export type NewDisk = typeof disks.$inferInsert;

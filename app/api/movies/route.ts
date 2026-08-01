@@ -40,6 +40,8 @@ const lightColumns = {
   createdAt: movies.createdAt,
   fileStatus: movies.fileStatus,
   storage: movies.storage,
+  diskId: movies.diskId,
+  sizeGb: movies.sizeGb,
   quality: movies.quality,
   progressSeason: movies.progressSeason,
   progressEpisode: movies.progressEpisode,

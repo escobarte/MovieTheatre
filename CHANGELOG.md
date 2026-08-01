@@ -11,6 +11,17 @@
 <!-- Новые записи добавляются ниже этой строки, каждая сверху -->
 
 ## 2026-08-01
+Учёт физических дисков: таблица disks с миграцией, поля diskId и sizeGb у фильма,
+API дисков со сводкой занятого и свободного места, экран «Диски» с полосой
+заполнения и содержимым каждого диска, выбор диска и веса в карточке. Фильтр
+«хранилище» заменён фильтром по диску.
+Файлы: lib/db/schema.ts, drizzle/0001_disks.sql, app/api/disks/route.ts,
+app/api/disks/[id]/route.ts, app/api/movies/route.ts, app/api/movies/[id]/route.ts,
+components/DisksProvider.tsx, components/MovieCard.tsx, components/Header.tsx,
+app/diski/page.tsx, app/diski/[id]/page.tsx, app/layout.tsx, app/vse-kino/page.tsx,
+lib/collection.ts, lib/filters.ts, lib/query.ts
+
+## 2026-08-01
 Этап 5: API подборок и сохранённых фильтров, экран «Списки» с сеткой обложек и
 отдельной группой фильтров, страница списка с перетаскиванием и полем «почему он
 здесь», добавление в подборку из карточки, кнопка «Сохранить фильтр» в каталоге,

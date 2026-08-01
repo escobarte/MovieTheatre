@@ -45,6 +45,8 @@ const EDITABLE = new Set([
   'fileStatus',
   'torrentUrl',
   'storage',
+  'diskId',
+  'sizeGb',
   'path',
   'quality',
 ]);

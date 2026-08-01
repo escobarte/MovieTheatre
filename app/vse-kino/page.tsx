@@ -7,6 +7,7 @@ import { Suspense, useCallback, useMemo, useState } from 'react';
 import { FilterSelect, type Option } from '@/components/catalog/FilterSelect';
 import { PickOne } from '@/components/catalog/PickOne';
 import { useCollection } from '@/components/CollectionProvider';
+import { useDisks } from '@/components/DisksProvider';
 import { useLists } from '@/components/ListsProvider';
 import { Poster } from '@/components/Poster';
 import { entriesWord, type Entry } from '@/lib/collection';
@@ -52,7 +53,7 @@ const SELECTORS: { category: ListCategory; label: string }[] = [
   { category: 'decade', label: 'Десятилетие' },
   { category: 'country', label: 'Страна' },
   { category: 'file', label: 'Файл' },
-  { category: 'storage', label: 'Хранилище' },
+  { category: 'disk', label: 'Диск' },
   { category: 'runtime', label: 'Хронометраж' },
   { category: 'director', label: 'Режиссёр' },
   { category: 'tag', label: 'Тег' },
@@ -71,6 +72,7 @@ export default function CatalogPage() {
 function Catalog() {
   const { entries: raw, loading, error } = useCollection();
   const { lists, createView } = useLists();
+  const { disks } = useDisks();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -96,6 +98,17 @@ function Catalog() {
   const listTitles = useMemo(
     () => new Map(lists.map((list) => [String(list.id), list.title])),
     [lists],
+  );
+
+  const diskLabels = useMemo(
+    () => new Map(disks.map((disk) => [String(disk.id), `Диск ${disk.label}`])),
+    [disks],
+  );
+
+  const titlesFor = useCallback(
+    (category: ListCategory) =>
+      category === 'list' ? listTitles : category === 'disk' ? diskLabels : undefined,
+    [listTitles, diskLabels],
   );
 
   const filters = useMemo(
@@ -207,7 +220,7 @@ function Catalog() {
           <FilterSelect
             key={category}
             label={label}
-            options={options(entries, filters, category, category === 'list' ? listTitles : undefined)}
+            options={options(entries, filters, category, titlesFor(category))}
             selected={filters[category]}
             onChange={(next) => update({ [category]: next } as Partial<Filters>)}
           />
