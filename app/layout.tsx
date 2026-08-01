@@ -6,6 +6,7 @@ import { CollectionProvider } from '@/components/CollectionProvider';
 import { DisksProvider } from '@/components/DisksProvider';
 import { Header } from '@/components/Header';
 import { ListsProvider } from '@/components/ListsProvider';
+import { SearchProvider } from '@/components/SearchProvider';
 
 import './globals.css';
 
@@ -34,10 +35,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ListsProvider>
             <DisksProvider>
               <CardProvider>
-                <div className="mx-auto w-full max-w-[1280px] px-[18px]">
-                  <Header />
-                  {children}
-                </div>
+                <SearchProvider>
+                  <div className="mx-auto w-full max-w-[1280px] px-[18px]">
+                    <Header />
+                    {children}
+                  </div>
+                </SearchProvider>
               </CardProvider>
             </DisksProvider>
           </ListsProvider>

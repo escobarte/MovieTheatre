@@ -11,9 +11,11 @@ export type LightRow = {
   year: number | null;
   posterUrl: string | null;
   runtime: number | null;
+  episodes: number | null;
   genres: string | null;
   countries: string | null;
   director: string | null;
+  cast: string | null;
   ratingKp: number | null;
   ratingImdb: number | null;
   ratingTmdb: number | null;
@@ -33,10 +35,11 @@ export type LightRow = {
 };
 
 /** Та же запись с разобранными JSON-полями — с ней работает весь клиент. */
-export type Entry = Omit<LightRow, 'genres' | 'countries' | 'tags'> & {
+export type Entry = Omit<LightRow, 'genres' | 'countries' | 'tags' | 'cast'> & {
   genres: string[];
   countries: string[];
   tags: string[];
+  cast: string[];
   /** id подборок, в которых состоит запись. Проставляется каталогом. */
   lists?: string[];
 };
@@ -72,6 +75,7 @@ export function decode(row: LightRow): Entry {
     genres: parseList(row.genres),
     countries: parseList(row.countries),
     tags: parseList(row.tags),
+    cast: parseList(row.cast),
   };
 }
 

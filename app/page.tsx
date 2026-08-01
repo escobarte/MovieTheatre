@@ -8,6 +8,7 @@ import { GenreDoor } from '@/components/GenreDoor';
 import { Shelf } from '@/components/Shelf';
 import { useCollection } from '@/components/CollectionProvider';
 import { useLists } from '@/components/ListsProvider';
+import { useSearch } from '@/components/SearchProvider';
 import { entriesWord } from '@/lib/collection';
 import { QP, catalogHref } from '@/lib/query';
 
@@ -124,19 +125,22 @@ function Notice({ text }: { text: string }) {
 
 /** Третье пустое состояние (5.6): только приглашение, без полок и фильтров. */
 function EmptyCollection() {
+  const { openSearch } = useSearch();
+
   return (
     <div className="flex flex-col items-center py-24 text-center">
       <h1 className="text-[22px] font-bold">Коллекция пуста</h1>
       <p className="mt-2 max-w-[420px] text-text-2">
         Здесь появятся последние добавленные, полки и подборки. Начните с первого фильма.
       </p>
-      <Link
-        href="/dev"
+      <button
+        type="button"
+        onClick={() => openSearch('add')}
         className="mt-6 inline-flex items-center gap-[7px] rounded-pill bg-red px-[18px] py-[9px] text-[12.5px] font-medium text-white transition-colors duration-[120ms] hover:bg-red-hover"
       >
         <Plus size={15} strokeWidth={1.5} />
         Добавить первый фильм
-      </Link>
+      </button>
     </div>
   );
 }

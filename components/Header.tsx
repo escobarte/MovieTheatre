@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
+import { useSearch } from './SearchProvider';
+
 const NAV = [
   { href: '/', label: 'Главная' },
   { href: '/vse-kino', label: 'Всё кино' },
@@ -16,6 +18,7 @@ const NAV = [
 export function Header() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { openSearch } = useSearch();
 
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
@@ -60,22 +63,25 @@ export function Header() {
         {menuOpen ? <X size={18} strokeWidth={1.5} /> : <Menu size={18} strokeWidth={1.5} />}
       </button>
 
-      {/* Поиск и добавление ведут на временную страницу до этапов 6 и 7. */}
-      <Link
-        href="/dev"
+      <button
+        type="button"
+        onClick={() => openSearch('search')}
         aria-label="Поиск"
+        title="Поиск  /"
         className="text-text-2 transition-colors duration-[120ms] hover:text-text"
       >
         <Search size={17} strokeWidth={1.5} />
-      </Link>
+      </button>
 
-      <Link
-        href="/dev"
+      {/* Тот же оверлей, но открытый сразу в режиме TMDB (5.8). */}
+      <button
+        type="button"
+        onClick={() => openSearch('add')}
         className="inline-flex items-center gap-[7px] rounded-pill bg-red px-[18px] py-[9px] text-[12.5px] font-medium whitespace-nowrap text-white transition-colors duration-[120ms] hover:bg-red-hover"
       >
         <Plus size={15} strokeWidth={1.5} />
         Добавить
-      </Link>
+      </button>
 
       {menuOpen && (
         <nav className="flex w-full flex-col gap-3 border-t border-line pt-4 sm:hidden">
