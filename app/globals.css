@@ -1,0 +1,96 @@
+@import 'tailwindcss';
+
+/* ─── 6.2. Токены ─────────────────────────────────────────────────────────
+   Единственный источник значений. В компонентах — только через переменные
+   или через утилиты Tailwind, объявленные в @theme ниже.                  */
+
+:root {
+  --bg:         #0B0B0D;   /* фон страницы */
+  --surface:    #16161A;   /* панели, карточки, поле поиска */
+  --surface-2:  #1E1E23;   /* подложка постера, разделители */
+  --surface-3:  #26262C;   /* вторичная кнопка, дорожка ползунка */
+  --line:       #1E1E23;
+
+  --text:       #F5F5F7;
+  --text-2:     #A1A1AA;
+  --text-3:     #6B6B73;
+  --text-4:     #5E5E67;
+  --icon-dim:   #34343C;   /* иконка внутри пустого постера */
+
+  --red:        #E5142B;
+  --red-hover:  #FF2740;
+  --gold:       #F5B01A;
+
+  --r-pill: 999px;
+  --r-lg:    12px;   /* оверлей, крупные блоки */
+  --r-md:    10px;   /* карточка карусели, поле поиска */
+  --r-sm:     8px;   /* кадр 16:9, карточка списка */
+  --r-xs:     6px;   /* постер */
+
+  --gap: 12px;
+}
+
+/* Те же токены как утилиты Tailwind: bg-surface, text-text-2, rounded-md… */
+@theme inline {
+  --color-bg:        var(--bg);
+  --color-surface:   var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line:      var(--line);
+
+  --color-text:     var(--text);
+  --color-text-2:   var(--text-2);
+  --color-text-3:   var(--text-3);
+  --color-text-4:   var(--text-4);
+  --color-icon-dim: var(--icon-dim);
+
+  --color-red:       var(--red);
+  --color-red-hover: var(--red-hover);
+  --color-gold:      var(--gold);
+
+  --radius-pill: var(--r-pill);
+  --radius-lg:   var(--r-lg);
+  --radius-md:   var(--r-md);
+  --radius-sm:   var(--r-sm);
+  --radius-xs:   var(--r-xs);
+
+  --font-sans: var(--font-onest), system-ui, sans-serif;
+}
+
+/* ─── База ────────────────────────────────────────────────────────────── */
+
+html {
+  background: var(--bg);
+  color-scheme: dark;
+}
+
+body {
+  min-width: 360px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-onest), system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* 6.6. Фокус с клавиатуры — outline убирать запрещено */
+:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+/* 6.6. Отключение движения */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+    transform: none !important;
+  }
+}
