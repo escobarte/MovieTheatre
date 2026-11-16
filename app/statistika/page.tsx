@@ -1,12 +1,14 @@
 'use client';
 
 import { Star } from 'lucide-react';
+import Link from 'next/link';
 import { useMemo } from 'react';
 
 import { useCard } from '@/components/CardProvider';
 import { useCollection } from '@/components/CollectionProvider';
 import { useDisks } from '@/components/DisksProvider';
 import { entriesWord, formatGb, plural, type Entry } from '@/lib/collection';
+import { QP, catalogHref } from '@/lib/query';
 import {
   byDecade,
   divergence,
@@ -62,8 +64,18 @@ export default function StatsPage() {
 
       <div className="mt-5 grid grid-cols-1 gap-[var(--gap)] min-[600px]:grid-cols-3">
         <Tile title="Всего" count={sum.all.count} hours={sum.all.hours} />
-        <Tile title="Фильмы" count={sum.movies.count} hours={sum.movies.hours} />
-        <Tile title="Сериалы" count={sum.series.count} hours={sum.series.hours} />
+        <Tile
+          title="Фильмы"
+          count={sum.movies.count}
+          hours={sum.movies.hours}
+          href={catalogHref({ [QP.type]: 'movie' })}
+        />
+        <Tile
+          title="Сериалы"
+          count={sum.series.count}
+          hours={sum.series.hours}
+          href={catalogHref({ [QP.type]: 'tv' })}
+        />
       </div>
 
       {(sum.withoutRuntime > 0 || sum.seriesWithoutEpisodes > 0) && (
@@ -87,14 +99,18 @@ export default function StatsPage() {
           <>
             <div className="flex items-end gap-[6px]">
               {ratings.map((bar) => (
-                <div key={bar.value} className="flex flex-1 flex-col items-center gap-[6px]">
+                <Link
+                  key={bar.value}
+                  href={catalogHref({ [QP.min]: String(bar.value) })}
+                  className="flex flex-1 flex-col items-center gap-[6px] rounded-sm py-1 transition-colors duration-[120ms] hover:bg-surface-2"
+                >
                   <span className="text-[11px] text-text-3">{bar.count || ''}</span>
                   <div
                     className="w-full rounded-xs bg-text-2"
                     style={{ height: `${scale(bar.count, ratings.map((r) => r.count))}px` }}
                   />
                   <span className="text-[11.5px] text-text-3">{bar.value}</span>
-                </div>
+                </Link>
               ))}
             </div>
             <p className="mt-3 text-[11.5px] text-text-3">
@@ -112,15 +128,16 @@ export default function StatsPage() {
               label={`${row.decade}-е`}
               value={row.count}
               max={Math.max(...decades.map((d) => d.count))}
+              href={catalogHref({ [QP.decade]: String(row.decade) })}
             />
           ))}
         </div>
       </Section>
 
       <div className="mt-5 grid grid-cols-1 gap-[var(--gap)] min-[900px]:grid-cols-3">
-        <Top title="Режиссёры" rows={stats.directors} />
-        <Top title="Жанры" rows={stats.genres} />
-        <Top title="Страны" rows={stats.countries} />
+        <Top title="Режиссёры" rows={stats.directors} toHref={(name) => catalogHref({ [QP.director]: name })} />
+        <Top title="Жанры" rows={stats.genres} toHref={(name) => catalogHref({ [QP.genre]: name })} />
+        <Top title="Страны" rows={stats.countries} toHref={(name) => catalogHref({ [QP.country]: name })} />
       </div>
 
       <Section title="Скачано">
@@ -137,6 +154,7 @@ export default function StatsPage() {
                 value={disk.movies}
                 max={Math.max(...disks.map((d) => d.movies), 1)}
                 suffix={`${formatGb(disk.usedGb)} из ${formatGb(disk.sizeGb)} ГБ`}
+                href={`/diski/${disk.id}`}
               />
             ))}
           </div>
@@ -180,15 +198,36 @@ function scale(value: number, all: number[]): number {
   return value === 0 ? 2 : Math.max(Math.round((value / max) * BAR_MAX), 3);
 }
 
-function Tile({ title, count, hours }: { title: string; count: number; hours: number }) {
-  return (
-    <div className="rounded-sm bg-surface p-[13px]">
+function Tile({
+  title,
+  count,
+  hours,
+  href,
+}: {
+  title: string;
+  count: number;
+  hours: number;
+  href?: string;
+}) {
+  const body = (
+    <>
       <p className="text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">{title}</p>
       <p className="mt-2 text-[22px] font-bold">{count}</p>
       <p className="mt-1 text-[11.5px] text-text-3">
         {hours} {plural(hours, 'час', 'часа', 'часов')}
       </p>
-    </div>
+    </>
+  );
+
+  if (!href) return <div className="rounded-sm bg-surface p-[13px]">{body}</div>;
+
+  return (
+    <Link
+      href={href}
+      className="block rounded-sm bg-surface p-[13px] transition-colors duration-[120ms] hover:bg-surface-2"
+    >
+      {body}
+    </Link>
   );
 }
 
@@ -206,14 +245,16 @@ function Bar({
   value,
   max,
   suffix,
+  href,
 }: {
   label: string;
   value: number;
   max: number;
   suffix?: string;
+  href?: string;
 }) {
-  return (
-    <div className="flex items-center gap-3">
+  const content = (
+    <>
       <span className="w-[110px] shrink-0 truncate text-[12px] text-text-2">{label}</span>
       <span className="h-[6px] flex-1 overflow-hidden rounded-pill bg-surface-3">
         <span
@@ -223,11 +264,30 @@ function Bar({
       </span>
       <span className="w-[36px] shrink-0 text-right text-[11.5px] text-text-3">{value}</span>
       {suffix && <span className="text-[11.5px] text-text-3">{suffix}</span>}
-    </div>
+    </>
+  );
+
+  if (!href) return <div className="flex items-center gap-3">{content}</div>;
+
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-3 rounded-sm transition-colors duration-[120ms] hover:bg-surface-2"
+    >
+      {content}
+    </Link>
   );
 }
 
-function Top({ title, rows }: { title: string; rows: [string, number][] }) {
+function Top({
+  title,
+  rows,
+  toHref,
+}: {
+  title: string;
+  rows: [string, number][];
+  toHref: (name: string) => string;
+}) {
   if (rows.length === 0) return null;
 
   return (
@@ -235,9 +295,14 @@ function Top({ title, rows }: { title: string; rows: [string, number][] }) {
       <h3 className="text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">{title}</h3>
       <ol className="mt-3 flex flex-col gap-[6px]">
         {rows.map(([name, count]) => (
-          <li key={name} className="flex items-baseline gap-2">
-            <span className="min-w-0 flex-1 truncate text-[12.5px]">{capitalize(name)}</span>
-            <span className="text-[11.5px] text-text-3">{count}</span>
+          <li key={name}>
+            <Link
+              href={toHref(name)}
+              className="flex items-baseline gap-2 rounded-sm transition-colors duration-[120ms] hover:bg-surface-2"
+            >
+              <span className="min-w-0 flex-1 truncate text-[12.5px]">{capitalize(name)}</span>
+              <span className="text-[11.5px] text-text-3">{count}</span>
+            </Link>
           </li>
         ))}
       </ol>
@@ -261,7 +326,7 @@ function DiffList({ title, rows }: { title: string; rows: Divergence[] }) {
               <button
                 type="button"
                 onClick={() => openCard(entry.id)}
-                className="flex w-full items-baseline gap-2 text-left"
+                className="flex w-full items-baseline gap-2 rounded-sm text-left transition-colors duration-[120ms] hover:bg-surface-2"
               >
                 <span className="min-w-0 flex-1 truncate text-[12.5px]">{entry.title}</span>
                 <Score entry={entry} />

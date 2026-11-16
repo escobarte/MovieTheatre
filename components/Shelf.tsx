@@ -48,7 +48,7 @@ export function Shelf({
         </Link>
       </div>
 
-      <div className="-my-2 flex gap-[var(--gap)] overflow-x-auto py-2">
+      <div className="mt-[6px] -mb-2 flex gap-[var(--gap)] overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {entries.map((entry) => (
           <div key={entry.id} className="w-[104px] shrink-0">
             <Poster entry={entry} badge={badge?.(entry)} />

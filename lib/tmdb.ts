@@ -240,6 +240,34 @@ async function getCountryNames(): Promise<Map<string, string>> {
   return countryNames;
 }
 
+/* ─── Жанры сериалов ─────────────────────────────────────────────────── */
+
+/**
+ * TMDB отдаёт сериалам сборные жанры одной строкой — раскладываем на
+ * отдельные, в том же написании, что у жанров фильмов (правка п.9).
+ * Сравнение без учёта регистра, ключевыми словами — точную пунктуацию
+ * TMDB для этих названий лучше не держать жёстко зашитой.
+ */
+const COMBINED_TV_GENRES: { test: (lower: string) => boolean; split: string[] }[] = [
+  { test: (g) => g.includes('боевик') && g.includes('приключ'), split: ['боевик', 'приключения'] },
+  {
+    test: (g) => (g.includes('фантаст') || g.includes('нф')) && g.includes('фэнтези'),
+    split: ['фантастика', 'фэнтези'],
+  },
+  { test: (g) => g.includes('войн') && g.includes('политик'), split: ['военный'] },
+];
+
+export function splitTvGenres(names: string[]): string[] {
+  const out: string[] = [];
+
+  for (const name of names) {
+    const rule = COMBINED_TV_GENRES.find((r) => r.test(name.toLowerCase()));
+    out.push(...(rule ? rule.split : [name]));
+  }
+
+  return dedupe(out);
+}
+
 export async function resolveCountries(countries?: Country[] | null): Promise<string[]> {
   const codes = dedupe((countries ?? []).map((c) => c.iso_3166_1));
   if (!codes.length) return [];

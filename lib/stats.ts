@@ -1,4 +1,4 @@
-import { countBy, decadeOf, type Entry } from './collection';
+import { countBy, decadeOf, peopleOf, type Entry } from './collection';
 
 /**
  * Вся статистика (5.10) считается в памяти по уже загруженной коллекции —
@@ -49,7 +49,7 @@ export function byDecade(entries: Entry[]): { decade: number; count: number }[] 
 }
 
 export function topDirectors(entries: Entry[], limit = 8) {
-  return countBy(entries, (e) => (e.director ? [e.director] : [])).slice(0, limit);
+  return countBy(entries, (e) => peopleOf(e.director)).slice(0, limit);
 }
 
 export function topGenres(entries: Entry[], limit = 8) {

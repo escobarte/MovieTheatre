@@ -14,6 +14,7 @@ import {
   pickTvCreator,
   pickTvProducers,
   resolveCountries,
+  splitTvGenres,
   yearOf,
 } from './tmdb';
 
@@ -86,7 +87,8 @@ async function buildTv(tmdbId: number): Promise<NewMovie> {
     runtime: tmdb.episode_run_time?.[0] || tmdb.last_episode_to_air?.runtime || null,
     seasons: tmdb.number_of_seasons ?? null,
     episodes: tmdb.number_of_episodes ?? null,
-    genres: json((tmdb.genres ?? []).map((g) => g.name)),
+    // TMDB отдаёт сериалам сборные жанры («Боевик и Приключения») — раскладываем (п.9).
+    genres: json(splitTvGenres((tmdb.genres ?? []).map((g) => g.name))),
     countries: json(await resolveCountries(tmdb.production_countries)),
     director: pickTvCreator(tmdb.created_by), // у сериала — создатель
     producers: json(pickTvProducers(tmdb.aggregate_credits?.crew)),

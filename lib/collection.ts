@@ -79,6 +79,19 @@ export function decode(row: LightRow): Entry {
   };
 }
 
+/**
+ * director бывает несколько имён через запятую («Джо Руссо, Энтони Руссо») —
+ * для фильтра, статистики и поиска каждый считается отдельным человеком,
+ * независимо от порядка (правка п.8). Хранение в базе не меняется.
+ */
+export function peopleOf(director: string | null): string[] {
+  if (!director) return [];
+  return director
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
 /** Десятилетие записи: 1979 → 1970. */
 export function decadeOf(year: number | null): number | null {
   return year === null ? null : Math.floor(year / 10) * 10;

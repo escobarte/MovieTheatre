@@ -60,9 +60,9 @@ export default function DisksPage() {
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="Метка: A, B, H"
-            className="w-[150px] rounded-md bg-surface px-3 py-2 caret-red outline-none"
+            className="field w-[150px]"
           />
-          <span className="flex items-center gap-2 rounded-md bg-surface px-3 py-2">
+          <span className="flex items-center gap-2">
             <input
               type="number"
               min={1}
@@ -70,7 +70,7 @@ export default function DisksPage() {
               value={size}
               onChange={(e) => setSize(e.target.value)}
               placeholder="Объём"
-              className="w-[110px] bg-transparent caret-red outline-none"
+              className="field w-[110px]"
             />
             <span className="text-text-3">ГБ</span>
           </span>

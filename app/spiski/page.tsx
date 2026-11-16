@@ -61,7 +61,7 @@ export default function ListsPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Название подборки"
-            className="min-w-[220px] flex-1 rounded-md bg-surface px-3 py-2 caret-red outline-none"
+            className="field min-w-[220px] flex-1"
           />
           <button
             type="submit"

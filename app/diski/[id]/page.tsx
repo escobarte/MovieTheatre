@@ -53,7 +53,7 @@ export default function DiskPage({ params }: { params: Promise<{ id: string }> }
               e.target.value !== disk.label &&
               patchDisk(id, { label: e.target.value.trim() })
             }
-            className="w-[90px] rounded-xs bg-transparent px-1 caret-red transition-colors duration-[120ms] hover:bg-surface focus:bg-surface"
+            className="field-inline w-[90px]"
           />
         </h1>
 
@@ -68,7 +68,7 @@ export default function DiskPage({ params }: { params: Promise<{ id: string }> }
               Number(e.target.value) !== disk.sizeGb &&
               patchDisk(id, { sizeGb: Number(e.target.value) })
             }
-            className="w-[80px] rounded-xs bg-transparent px-1 caret-red transition-colors duration-[120ms] hover:bg-surface focus:bg-surface"
+            className="field-inline w-[80px]"
           />
           ГБ всего
         </span>
@@ -114,7 +114,15 @@ export default function DiskPage({ params }: { params: Promise<{ id: string }> }
         )}
       </div>
 
-      {disk.note && <p className="mt-3 text-text-2">{disk.note}</p>}
+      <input
+        key={disk.note ?? ''}
+        defaultValue={disk.note ?? ''}
+        placeholder="пометка"
+        onBlur={(e) =>
+          e.target.value.trim() !== (disk.note ?? '') && patchDisk(id, { note: e.target.value.trim() })
+        }
+        className="field-inline mt-3 w-full text-text-2"
+      />
 
       {onDisk.length === 0 ? (
         <p className="py-20 text-center text-text-2">

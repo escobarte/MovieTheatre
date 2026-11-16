@@ -94,3 +94,49 @@ body {
     transform: none !important;
   }
 }
+
+/* ─── Поля ввода (правки по итогам ручной проверки, п.2) ─────────────────
+   Общий стиль для всех input/textarea. Ширину, цвет текста и размер шрифта
+   задаёт вызывающий компонент через Tailwind — здесь они не трогаются:
+   этот файл не лежит в @layer, поэтому любое свойство, заданное тут,
+   перебивало бы одноимённую утилиту Tailwind независимо от порядка классов. */
+.field {
+  background: var(--bg);
+  border: 1px solid var(--surface-3);
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+  caret-color: var(--red);
+}
+
+.field::placeholder {
+  color: var(--text-4);
+}
+
+.field:hover {
+  border-color: var(--text-4);
+}
+
+.field:focus {
+  border-color: var(--text-3);
+}
+
+/* Поле «правится по клику»: в обычном режиме выглядит текстом, рамка
+   и фон появляются только в режиме редактирования — по фокусу. */
+.field-inline {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  padding: 2px 4px;
+  caret-color: var(--red);
+  cursor: text;
+}
+
+.field-inline:hover {
+  background: var(--surface-2);
+}
+
+.field-inline:focus {
+  background: var(--bg);
+  border-color: var(--text-3);
+  padding: 7px 10px;
+}

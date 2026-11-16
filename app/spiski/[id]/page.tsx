@@ -76,7 +76,7 @@ export default function ListPage({ params }: { params: Promise<{ id: string }> }
             e.target.value !== list.title &&
             patchList(id, { title: e.target.value.trim() })
           }
-          className="min-w-0 flex-1 rounded-xs bg-transparent px-1 text-[22px] font-bold caret-red transition-colors duration-[120ms] hover:bg-surface focus:bg-surface"
+          className="field-inline min-w-0 flex-1 text-[22px] font-bold"
         />
         <span className="text-[12.5px] text-text-3">
           {items.length} {entriesWord(items.length)}
@@ -197,7 +197,7 @@ function Card({
         defaultValue={item.note ?? ''}
         placeholder="почему он здесь"
         onBlur={(e) => e.target.value !== (item.note ?? '') && onNote(e.target.value.trim())}
-        className="mt-[6px] w-full rounded-xs bg-transparent px-1 py-[2px] text-[11.5px] text-text-2 caret-red transition-colors duration-[120ms] hover:bg-surface focus:bg-surface"
+        className="field-inline mt-[6px] w-full text-[11.5px] text-text-2"
       />
 
       <div className="mt-1 flex items-center gap-1 text-text-3">

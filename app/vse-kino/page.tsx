@@ -1,8 +1,8 @@
 'use client';
 
-import { Bookmark, Shuffle, Star, X } from 'lucide-react';
+import { Bookmark, ChevronDown, Shuffle, Star, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useMemo, useState } from 'react';
+import { Suspense, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { FilterSelect, type Option } from '@/components/catalog/FilterSelect';
 import { PickOne } from '@/components/catalog/PickOne';
@@ -184,34 +184,17 @@ function Catalog() {
 
       {/* Первая строка — жанры пилюлями, самое частое (5.3). */}
       {genreOptions.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-[6px]">
-          {genreOptions.map((option) => {
-            const on = filters.genre.includes(option.value);
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() =>
-                  update({
-                    genre: on
-                      ? filters.genre.filter((g) => g !== option.value)
-                      : [...filters.genre, option.value],
-                  })
-                }
-                className={`rounded-pill px-[15px] py-[7px] whitespace-nowrap transition-colors duration-[120ms] ${
-                  on
-                    ? 'bg-red font-medium text-white hover:bg-red-hover'
-                    : 'text-text-2 hover:bg-surface hover:text-text'
-                }`}
-              >
-                {option.label}
-                <span className={`ml-[6px] ${on ? 'text-white/70' : 'text-text-3'}`}>
-                  {option.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <GenreRow
+          options={genreOptions}
+          selected={filters.genre}
+          onToggle={(value) =>
+            update({
+              genre: filters.genre.includes(value)
+                ? filters.genre.filter((g) => g !== value)
+                : [...filters.genre, value],
+            })
+          }
+        />
       )}
 
       {/* Вторая строка — выпадающие. */}
@@ -277,7 +260,7 @@ function Catalog() {
                 onChange={(e) => setViewTitle(e.target.value)}
                 placeholder="Название фильтра"
                 onKeyDown={(e) => e.key === 'Escape' && setSaving(false)}
-                className="w-[190px] rounded-pill bg-surface-3 px-[14px] py-[7px] text-[12px] caret-red outline-none"
+                className="field w-[190px] text-[12px]"
               />
               <button
                 type="submit"
@@ -369,6 +352,140 @@ function Catalog() {
         <NothingMatches filters={filters} onReset={reset} />
       )}
     </div>
+  );
+}
+
+/**
+ * Строка жанров сворачивается до одной видимой строки пилюль (5.3, правка
+ * п.6): сколько реально помещается, меряется через offsetTop невидимого
+ * дубля того же набора — лейблы разной длины, поэтому фиксированное число
+ * на колонку не подошло бы. Разворачивается сама, если выбранный жанр
+ * оказался бы вне свёрнутой строки.
+ */
+function GenreRow({
+  options,
+  selected,
+  onToggle,
+}: {
+  options: Option[];
+  selected: string[];
+  onToggle: (value: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [fitCount, setFitCount] = useState<number | null>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const container = measureRef.current;
+    if (!container) return;
+
+    const measure = () => {
+      const children = Array.from(container.children) as HTMLElement[];
+      if (children.length === 0) {
+        setFitCount(0);
+        return;
+      }
+      const firstTop = children[0].offsetTop;
+      let count = 0;
+      for (const child of children) {
+        if (child.offsetTop === firstTop) count++;
+        else break;
+      }
+      setFitCount(count);
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(container);
+    return () => ro.disconnect();
+    // Жирный шрифт активной пилюли чуть меняет её ширину — пересчитываем
+    // и при смене выбора, не только при смене набора жанров.
+  }, [options, selected]);
+
+  const fitsInOneRow = fitCount !== null && fitCount >= options.length;
+
+  // Резервируем место под пилюлю «Ещё N» — иначе она сама не влезла бы в строку.
+  const collapsedCount = fitCount === null ? options.length : Math.max(fitCount - 1, 1);
+
+  const hiddenSelected =
+    fitCount !== null &&
+    !fitsInOneRow &&
+    options.some((o, i) => i >= collapsedCount && selected.includes(o.value));
+
+  const showAll = expanded || hiddenSelected || fitCount === null || fitsInOneRow;
+  const visible = showAll ? options : options.slice(0, collapsedCount);
+  const hiddenCount = options.length - visible.length;
+
+  return (
+    <div className="relative mt-4">
+      <div
+        ref={measureRef}
+        aria-hidden
+        className="pointer-events-none invisible absolute inset-x-0 top-0 flex flex-wrap gap-[6px]"
+      >
+        {options.map((option) => (
+          <GenrePill key={option.value} option={option} on={selected.includes(option.value)} tabIndex={-1} />
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-[6px]">
+        {visible.map((option) => (
+          <GenrePill
+            key={option.value}
+            option={option}
+            on={selected.includes(option.value)}
+            onClick={() => onToggle(option.value)}
+          />
+        ))}
+
+        {!showAll && hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="inline-flex items-center gap-[6px] rounded-pill bg-surface-3 px-[15px] py-[7px] text-[12.5px] font-medium whitespace-nowrap text-text transition-colors duration-[120ms] hover:bg-surface"
+          >
+            Ещё {hiddenCount}
+            <ChevronDown size={13} strokeWidth={1.5} />
+          </button>
+        )}
+
+        {showAll && !fitsInOneRow && fitCount !== null && (
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            className="inline-flex items-center rounded-pill bg-surface-3 px-[15px] py-[7px] text-[12.5px] font-medium whitespace-nowrap text-text transition-colors duration-[120ms] hover:bg-surface"
+          >
+            Свернуть
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GenrePill({
+  option,
+  on,
+  onClick,
+  tabIndex,
+}: {
+  option: Option;
+  on: boolean;
+  onClick?: () => void;
+  tabIndex?: number;
+}) {
+  return (
+    <button
+      type="button"
+      tabIndex={tabIndex}
+      onClick={onClick}
+      className={`rounded-pill px-[15px] py-[7px] whitespace-nowrap transition-colors duration-[120ms] ${
+        on ? 'bg-red font-medium text-white hover:bg-red-hover' : 'text-text-2 hover:bg-surface hover:text-text'
+      }`}
+    >
+      {option.label}
+      <span className={`ml-[6px] ${on ? 'text-white/70' : 'text-text-3'}`}>{option.count}</span>
+    </button>
   );
 }
 

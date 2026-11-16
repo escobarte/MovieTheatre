@@ -2,6 +2,7 @@ import {
   FILE_STATUS_LABELS,
   STATUS_LABELS,
   decadeOf,
+  peopleOf,
   type Entry,
   type FileStatus,
   type Status,
@@ -121,7 +122,7 @@ export function valuesOf(entry: Entry, category: ListCategory): string[] {
     case 'country':
       return entry.countries;
     case 'director':
-      return entry.director ? [entry.director] : [];
+      return peopleOf(entry.director);
     case 'tag':
       return entry.tags;
     case 'file':

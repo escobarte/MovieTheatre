@@ -3,7 +3,8 @@
 import { Check, Image as ImageIcon, Play, Plus, Star, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-import { FILE_STATUS_LABELS, STATUS_LABELS, plural } from '@/lib/collection';
+import { Select } from '@/components/catalog/Select';
+import { FILE_STATUS_LABELS, STATUS_LABELS, formatGb, plural } from '@/lib/collection';
 import type { FileStatus, Movie, Status } from '@/lib/db/schema';
 
 import { useCollection } from './CollectionProvider';
@@ -299,7 +300,7 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
             type="date"
             defaultValue={movie.watchedAt ?? ''}
             onBlur={(e) => save({ watchedAt: e.target.value || null })}
-            className="rounded-xs bg-surface-2 px-2 py-1 text-[12px] caret-red"
+            className="field-inline text-[12px]"
           />
         </Row>
 
@@ -323,10 +324,11 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
 
       <Block title="Файл">
         <Row label="Статус">
-          <Pills
+          <Select
+            label="Статус"
             options={Object.entries(FILE_STATUS_LABELS).map(([value, label]) => ({ value, label }))}
             value={movie.fileStatus}
-            onPick={(fileStatus) => save({ fileStatus: fileStatus as FileStatus })}
+            onChange={(fileStatus) => save({ fileStatus: fileStatus as FileStatus })}
           />
         </Row>
 
@@ -368,7 +370,8 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
 /**
  * Диск выбирается из заведённых, рядом необязательный вес в ГБ. Вес нужен
  * для подсчёта занятого места, но без него запись всё равно числится на диске
- * — просто попадает в «подсчёт неполный».
+ * — просто попадает в «подсчёт неполный». Рядом с именем диска — остаток
+ * места, чтобы было видно, куда ещё есть смысл класть файл.
  */
 function DiskField({
   movie,
@@ -380,16 +383,21 @@ function DiskField({
   const { disks, reload } = useDisks();
 
   const options = [
-    { value: '', label: 'нет диска' },
-    ...disks.map((disk) => ({ value: String(disk.id), label: `Диск ${disk.label}` })),
+    { value: '', label: 'Нет диска' },
+    ...disks.map((disk) => ({
+      value: String(disk.id),
+      label: `Диск ${disk.label}`,
+      hint: `свободно ${formatGb(disk.freeGb)} ГБ`,
+    })),
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-[6px]">
-      <Pills
+    <div className="flex flex-wrap items-center gap-[10px]">
+      <Select
+        label="Диск"
         options={options}
         value={String(movie.diskId ?? '')}
-        onPick={async (value) => {
+        onChange={async (value) => {
           save({ diskId: value ? Number(value) : null });
           await reload();
         }}
@@ -494,7 +502,7 @@ function ListPicker({ movieId }: { movieId: number }) {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="новая подборка"
-                className="w-full rounded-sm bg-surface-2 px-[10px] py-[6px] text-[12px] caret-red outline-none"
+                className="field w-full text-[12px]"
               />
             </form>
           </div>
@@ -582,7 +590,7 @@ function EditText({
       defaultValue={value}
       placeholder={placeholder}
       onBlur={(e) => e.target.value !== value && onSave(e.target.value.trim())}
-      className={`rounded-xs bg-transparent px-1 py-[2px] caret-red transition-colors duration-[120ms] hover:bg-surface-2 focus:bg-surface-2 ${className}`}
+      className={`field-inline ${className}`}
     />
   );
 }
@@ -610,7 +618,7 @@ function EditNumber({
         if (next !== value) onSave(next);
       }}
       style={{ width }}
-      className="rounded-xs bg-transparent px-1 py-[2px] caret-red transition-colors duration-[120ms] hover:bg-surface-2 focus:bg-surface-2"
+      className="field-inline"
     />
   );
 }
@@ -623,7 +631,7 @@ function EditArea({ value, onSave }: { value: string; onSave: (value: string) =>
       rows={3}
       placeholder="о чём это было"
       onBlur={(e) => e.target.value !== value && onSave(e.target.value.trim())}
-      className="w-full resize-y rounded-xs bg-transparent px-1 py-[2px] caret-red transition-colors duration-[120ms] hover:bg-surface-2 focus:bg-surface-2"
+      className="field-inline w-full resize-y"
     />
   );
 }
