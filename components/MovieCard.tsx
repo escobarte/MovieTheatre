@@ -1,7 +1,7 @@
 'use client';
 
-import { Check, Image as ImageIcon, Play, Plus, Star, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { AlertCircle, Check, Image as ImageIcon, Play, Plus, Star, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Select } from '@/components/catalog/Select';
 import { FILE_STATUS_LABELS, STATUS_LABELS, formatGb, plural } from '@/lib/collection';
@@ -28,6 +28,15 @@ export function MovieCard({
   const { applyPatch } = useCollection();
   const [movie, setMovie] = useState<Movie | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  /** Учёт идущих сохранений (п.5): сюда попадает каждый PATCH из полей
+   * карточки, включая выпадающие списки «Статус»/«Диск» и вес — все они
+   * вызывают один и тот же save(). */
+  const pending = useRef<Set<Promise<void>>>(new Set());
+  const batchFailed = useRef(false);
+  const lastOutcome = useRef<'saved' | 'error'>('saved');
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
     let cancelled = false;
@@ -58,31 +67,77 @@ export function MovieCard({
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = overflow;
+      if (savedTimer.current) clearTimeout(savedTimer.current);
     };
   }, [onClose]);
 
-  /** Сохранение по расфокусировке: пишем в базу и сразу в коллекцию в памяти. */
+  /**
+   * Сохранение по расфокусировке остаётся как есть — пишем в базу и сразу
+   * в коллекцию в памяти. Каждый вызов кладёт свой промис в общий набор
+   * pending, чтобы кнопка «Сохранить» могла дождаться всех сразу (п.3, п.5).
+   */
   const save = useCallback(
-    async (fields: Partial<Movie>) => {
+    (fields: Partial<Movie>) => {
       setMovie((prev) => (prev ? { ...prev, ...fields } : prev));
-      try {
-        const res = await fetch(`/api/movies/${id}`, {
-          method: 'PATCH',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(fields),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? res.statusText);
-
-        setMovie(data.movie);
-        applyPatch(id, data.movie);
-        setError(null);
-      } catch (e) {
-        setError((e as Error).message);
+      setSaveState('saving');
+      if (savedTimer.current) {
+        clearTimeout(savedTimer.current);
+        savedTimer.current = null;
       }
+
+      let task!: Promise<void>;
+      task = (async () => {
+        try {
+          const res = await fetch(`/api/movies/${id}`, {
+            method: 'PATCH',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(fields),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error ?? res.statusText);
+
+          setMovie(data.movie);
+          applyPatch(id, data.movie);
+          setError(null);
+        } catch (e) {
+          batchFailed.current = true;
+          setError((e as Error).message);
+        } finally {
+          pending.current.delete(task);
+          if (pending.current.size === 0) {
+            if (batchFailed.current) {
+              batchFailed.current = false;
+              lastOutcome.current = 'error';
+              setSaveState('error');
+            } else {
+              lastOutcome.current = 'saved';
+              setSaveState('saved');
+              savedTimer.current = setTimeout(() => setSaveState('idle'), 2000);
+            }
+          }
+        }
+      })();
+
+      pending.current.add(task);
+      return task;
     },
     [id, applyPatch],
   );
+
+  /**
+   * Кнопка «Сохранить» (п.3): снимает фокус, чтобы сработало сохранение
+   * активного поля, ждёт все идущие PATCH этой карточки и закрывает карточку,
+   * только если все они прошли успешно.
+   */
+  const handleSaveClick = useCallback(async () => {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+
+    while (pending.current.size > 0) {
+      await Promise.allSettled(Array.from(pending.current));
+    }
+
+    if (lastOutcome.current === 'saved') onClose();
+  }, [onClose]);
 
   return (
     <div
@@ -95,31 +150,76 @@ export function MovieCard({
         aria-label={movie?.title ?? 'Карточка записи'}
         className="w-full max-w-[880px] rounded-lg bg-surface p-5 sm:p-[22px]"
       >
-        <div className="flex items-start gap-4">
-          {justAdded && (
-            <p className="text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">
-              Добавлено — поставьте статус и оценку
-            </p>
+        {/* Отступ снизу под высоту закреплённой полосы (п.7) — иначе она
+            при прокрутке закрывает последнее поле. */}
+        <div className={movie ? 'pb-16' : undefined}>
+          <div className="flex items-start gap-4">
+            {justAdded && (
+              <p className="text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">
+                Добавлено — поставьте статус и оценку
+              </p>
+            )}
+            <span className="flex-1" />
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Закрыть"
+              className="text-text-3 transition-colors duration-[120ms] hover:text-text"
+            >
+              <X size={19} strokeWidth={1.5} />
+            </button>
+          </div>
+
+          {error && <p className="mt-2 text-text-2">Ошибка: {error}</p>}
+
+          {!movie ? (
+            <p className="py-10 text-text-3">Загружаю карточку</p>
+          ) : (
+            <Body movie={movie} save={save} />
           )}
-          <span className="flex-1" />
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Закрыть"
-            className="text-text-3 transition-colors duration-[120ms] hover:text-text"
-          >
-            <X size={19} strokeWidth={1.5} />
-          </button>
         </div>
 
-        {error && <p className="mt-2 text-text-2">Ошибка: {error}</p>}
-
-        {!movie ? (
-          <p className="py-10 text-text-3">Загружаю карточку</p>
-        ) : (
-          <Body movie={movie} save={save} />
-        )}
+        {movie && <SaveBar saveState={saveState} onSave={handleSaveClick} />}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Закреплённая полоса внизу карточки (п.1–4): статус слева, кнопка
+ * «Сохранить» справа. Остаётся на месте при прокрутке карточки — это
+ * единственное явное действие, после которого видно, что всё сохранено.
+ */
+function SaveBar({
+  saveState,
+  onSave,
+}: {
+  saveState: 'idle' | 'saving' | 'saved' | 'error';
+  onSave: () => void;
+}) {
+  return (
+    <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center gap-3 rounded-b-lg border-t border-line bg-surface px-5 py-3 sm:-mx-[22px] sm:-mb-[22px] sm:px-[22px]">
+      <span className="flex items-center gap-[6px] text-[12px]">
+        {saveState === 'saving' && <span className="text-text-3">Сохраняю…</span>}
+        {saveState === 'saved' && <span className="text-text-3">Сохранено</span>}
+        {saveState === 'error' && (
+          <span className="flex items-center gap-[6px] text-text-2">
+            <AlertCircle size={13} strokeWidth={1.5} />
+            Не сохранилось, попробуй ещё раз
+          </span>
+        )}
+      </span>
+
+      <span className="flex-1" />
+
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={saveState === 'saving'}
+        className="rounded-pill bg-red px-[18px] py-[9px] text-[12.5px] font-medium whitespace-nowrap text-white transition-colors duration-[120ms] hover:bg-red-hover disabled:opacity-60"
+      >
+        {saveState === 'saving' ? 'Сохраняю…' : 'Сохранить'}
+      </button>
     </div>
   );
 }
