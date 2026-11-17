@@ -150,45 +150,41 @@ export function MovieCard({
         aria-label={movie?.title ?? 'Карточка записи'}
         className="w-full max-w-[880px] rounded-lg bg-surface p-5 sm:p-[22px]"
       >
-        {/* Отступ снизу под высоту закреплённой полосы (п.7) — иначе она
-            при прокрутке закрывает последнее поле. */}
-        <div className={movie ? 'pb-16' : undefined}>
-          <div className="flex items-start gap-4">
-            {justAdded && (
-              <p className="text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">
-                Добавлено — поставьте статус и оценку
-              </p>
-            )}
-            <span className="flex-1" />
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Закрыть"
-              className="text-text-3 transition-colors duration-[120ms] hover:text-text"
-            >
-              <X size={19} strokeWidth={1.5} />
-            </button>
-          </div>
-
-          {error && <p className="mt-2 text-text-2">Ошибка: {error}</p>}
-
-          {!movie ? (
-            <p className="py-10 text-text-3">Загружаю карточку</p>
-          ) : (
-            <Body movie={movie} save={save} />
+        <div className="flex items-start gap-4">
+          {justAdded && (
+            <p className="text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">
+              Добавлено — поставьте статус и оценку
+            </p>
           )}
+          <span className="flex-1" />
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Закрыть"
+            className="text-text-3 transition-colors duration-[120ms] hover:text-text"
+          >
+            <X size={19} strokeWidth={1.5} />
+          </button>
         </div>
 
-        {movie && <SaveBar saveState={saveState} onSave={handleSaveClick} />}
+        {error && <p className="mt-2 text-text-2">Ошибка: {error}</p>}
+
+        {!movie ? (
+          <p className="py-10 text-text-3">Загружаю карточку</p>
+        ) : (
+          <>
+            <Body movie={movie} save={save} />
+            <SaveBar saveState={saveState} onSave={handleSaveClick} />
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 /**
- * Закреплённая полоса внизу карточки (п.1–4): статус слева, кнопка
- * «Сохранить» справа. Остаётся на месте при прокрутке карточки — это
- * единственное явное действие, после которого видно, что всё сохранено.
+ * Строка с кнопкой «Сохранить» в самом конце карточки (п.1–4): обычный
+ * элемент потока, без подложки и без sticky — прокрутил до конца, нажал.
  */
 function SaveBar({
   saveState,
@@ -198,7 +194,7 @@ function SaveBar({
   onSave: () => void;
 }) {
   return (
-    <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center gap-3 rounded-b-lg border-t border-line bg-surface px-5 py-3 sm:-mx-[22px] sm:-mb-[22px] sm:px-[22px]">
+    <div className="mt-5 flex items-center gap-3">
       <span className="flex items-center gap-[6px] text-[12px]">
         {saveState === 'saving' && <span className="text-text-3">Сохраняю…</span>}
         {saveState === 'saved' && <span className="text-text-3">Сохранено</span>}
