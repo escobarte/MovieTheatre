@@ -300,7 +300,7 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
             type="date"
             defaultValue={movie.watchedAt ?? ''}
             onBlur={(e) => save({ watchedAt: e.target.value || null })}
-            className="field-inline text-[12px]"
+            className="field w-full text-[12px]"
           />
         </Row>
 
@@ -403,14 +403,14 @@ function DiskField({
         }}
       />
 
-      <span className="flex items-center gap-1 text-text-3">
+      <span className="flex items-center gap-[6px] text-text-3">
         <EditNumber
           value={movie.sizeGb}
           onSave={async (sizeGb) => {
             save({ sizeGb });
             await reload();
           }}
-          width={60}
+          width={96}
           step="0.1"
         />
         ГБ
@@ -590,7 +590,7 @@ function EditText({
       defaultValue={value}
       placeholder={placeholder}
       onBlur={(e) => e.target.value !== value && onSave(e.target.value.trim())}
-      className={`field-inline ${className}`}
+      className={`field ${className}`}
     />
   );
 }
@@ -618,7 +618,7 @@ function EditNumber({
         if (next !== value) onSave(next);
       }}
       style={{ width }}
-      className="field-inline"
+      className="field"
     />
   );
 }
@@ -631,7 +631,7 @@ function EditArea({ value, onSave }: { value: string; onSave: (value: string) =>
       rows={3}
       placeholder="о чём это было"
       onBlur={(e) => e.target.value !== value && onSave(e.target.value.trim())}
-      className="field-inline w-full resize-y"
+      className="field w-full resize-y"
     />
   );
 }

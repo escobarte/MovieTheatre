@@ -53,7 +53,7 @@ export default function DiskPage({ params }: { params: Promise<{ id: string }> }
               e.target.value !== disk.label &&
               patchDisk(id, { label: e.target.value.trim() })
             }
-            className="field-inline w-[90px]"
+            className="field w-[90px]"
           />
         </h1>
 
@@ -68,7 +68,7 @@ export default function DiskPage({ params }: { params: Promise<{ id: string }> }
               Number(e.target.value) !== disk.sizeGb &&
               patchDisk(id, { sizeGb: Number(e.target.value) })
             }
-            className="field-inline w-[80px]"
+            className="field w-[80px]"
           />
           ГБ всего
         </span>
@@ -121,7 +121,7 @@ export default function DiskPage({ params }: { params: Promise<{ id: string }> }
         onBlur={(e) =>
           e.target.value.trim() !== (disk.note ?? '') && patchDisk(id, { note: e.target.value.trim() })
         }
-        className="field-inline mt-3 w-full text-text-2"
+        className="field mt-3 w-full text-text-2"
       />
 
       {onDisk.length === 0 ? (

@@ -135,8 +135,13 @@ function Card({ entry }: { entry: Entry }) {
       aria-label={`${entry.title}: открыть карточку`}
       className="block w-full rounded-md bg-surface p-[10px] text-left"
     >
-      <span className="flex aspect-[16/9] items-center justify-center rounded-sm bg-surface-2 text-icon-dim">
-        <ImageIcon size={22} strokeWidth={1.5} />
+      <span className="flex aspect-[16/9] items-center justify-center overflow-hidden rounded-sm bg-surface-2 text-icon-dim">
+        {entry.backdropUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={entry.backdropUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+        ) : (
+          <ImageIcon size={22} strokeWidth={1.5} />
+        )}
       </span>
 
       <span className="mt-[11px] block text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">

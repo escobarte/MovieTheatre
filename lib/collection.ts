@@ -10,6 +10,7 @@ export type LightRow = {
   originalTitle: string | null;
   year: number | null;
   posterUrl: string | null;
+  backdropUrl: string | null;
   runtime: number | null;
   episodes: number | null;
   genres: string | null;

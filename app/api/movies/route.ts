@@ -8,8 +8,8 @@ import { buildRecord } from '@/lib/merge';
 export const dynamic = 'force-dynamic';
 
 /**
- * Облегчённые поля по разделу 4: без overview, cast, producers, note и
- * backdropUrl. При 2000 записей полная выдача весила бы мегабайты,
+ * Облегчённые поля по разделу 4: без overview, producers, note и
+ * trailerKey. При 2000 записей полная выдача весила бы мегабайты,
  * облегчённая грузится один раз за сессию.
  *
  * Сверх перечисленного в разделе 4 добавлены fileStatus, диск с весом,
@@ -22,6 +22,9 @@ export const dynamic = 'force-dynamic';
  * заметное утяжеление — три-четыре имени на запись.
  *
  * И episodes: часы по сериалу это минуты в серии на число серий (5.10).
+ *
+ * backdropUrl — кадр 16:9 в карусели «Последние добавленные» (5.2); без
+ * него карусель не отличить от пустого состояния.
  */
 const lightColumns = {
   id: movies.id,
@@ -30,6 +33,7 @@ const lightColumns = {
   originalTitle: movies.originalTitle,
   year: movies.year,
   posterUrl: movies.posterUrl,
+  backdropUrl: movies.backdropUrl,
   runtime: movies.runtime,
   episodes: movies.episodes,
   genres: movies.genres,

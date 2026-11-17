@@ -7,10 +7,11 @@ export type SelectOption = { value: string; label: string; hint?: string };
 
 /**
  * Выпадающий список с одним значением, всегда выбранным (6.5): вид тот же,
- * что у FilterSelect в «Всё кино», но без мультивыбора и без счётчиков —
- * здесь каждое значение само по себе ответ, поэтому подпись всегда
- * показывает его: «Статус: Скачан». Используется в карточке записи для
- * статуса файла и выбора диска.
+ * что у FilterSelect в «Всё кино», но без мультивыбора и без счётчиков.
+ * В пилюле показывается только значение («Скачан», «Нет диска») — подпись
+ * поля уже есть рядом в карточке, второй раз её повторять не нужно; label
+ * остаётся в aria-label для скринридера. Используется в карточке записи
+ * для статуса файла и выбора диска.
  */
 export function Select({
   label,
@@ -52,9 +53,10 @@ export function Select({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        aria-label={`${label}: ${current?.label ?? value}`}
         className="inline-flex items-center gap-[6px] rounded-pill bg-surface-3 px-[14px] py-[7px] text-[12px] whitespace-nowrap text-text transition-colors duration-[120ms]"
       >
-        {label}: {current?.label ?? value}
+        {current?.label ?? value}
         <ChevronDown size={13} strokeWidth={1.5} />
       </button>
 
