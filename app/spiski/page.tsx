@@ -1,14 +1,15 @@
 'use client';
 
-import { Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
 import { useCollection } from '@/components/CollectionProvider';
-import { ListCover } from '@/components/ListCover';
-import { useLists, type MovieList } from '@/components/ListsProvider';
+import { ListCover, ViewCover } from '@/components/ListCover';
+import { useLists, type MovieList, type SavedView } from '@/components/ListsProvider';
 import { entriesWord } from '@/lib/collection';
 import type { Entry } from '@/lib/collection';
+import { activeConditions, applyFilters, parseFilters } from '@/lib/filters';
 
 /**
  * Списки (5.9): сетка обложек с названием, числом записей и пометкой
@@ -107,28 +108,14 @@ export default function ListsPage() {
             Сохранённые фильтры
           </h2>
 
-          <div className="mt-3 grid grid-cols-1 gap-[var(--gap)] min-[600px]:grid-cols-2 min-[900px]:grid-cols-3">
+          <div className="mt-3 grid grid-cols-2 gap-[var(--gap)] min-[900px]:grid-cols-3 min-[1280px]:grid-cols-4">
             {views.map((view) => (
-              <div
+              <ViewCard
                 key={view.id}
-                className="flex items-center gap-3 rounded-sm bg-surface px-[13px] py-[11px]"
-              >
-                <Link href={`/vse-kino?${view.query}`} className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-medium">{view.title}</span>
-                  <span className="mt-1 flex items-center gap-[5px] text-[11.5px] text-text-3">
-                    <RefreshCw size={12} strokeWidth={1.5} />
-                    обновляется само
-                  </span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => deleteView(view.id)}
-                  aria-label={`Удалить фильтр «${view.title}»`}
-                  className="text-text-3 transition-colors duration-[120ms] hover:text-text"
-                >
-                  <Trash2 size={15} strokeWidth={1.5} />
-                </button>
-              </div>
+                view={view}
+                entries={entries}
+                onDelete={() => deleteView(view.id)}
+              />
             ))}
           </div>
         </section>
@@ -149,5 +136,54 @@ function ListCard({ list, byId }: { list: MovieList; byId: Map<number, Entry> })
         {list.items.length} {entriesWord(list.items.length)} · вручную
       </p>
     </Link>
+  );
+}
+
+/**
+ * Карточка сохранённого фильтра: та же обложка-кадр, что у списка, плюс
+ * условия фильтра и живой счётчик. Корзина — отдельный элемент рядом со
+ * значком обновления, не внутри ссылки: кнопку нельзя вкладывать в `<a>`.
+ */
+function ViewCard({
+  view,
+  entries,
+  onDelete,
+}: {
+  view: SavedView;
+  entries: Entry[];
+  onDelete: () => void;
+}) {
+  const filters = parseFilters(new URLSearchParams(view.query));
+  const matches = applyFilters(entries, filters);
+  const conditions = activeConditions(filters);
+
+  return (
+    <div className="group relative">
+      <Link href={`/vse-kino?${view.query}`} className="block">
+        <div className="transition-transform duration-150 ease-out hover:scale-[1.03]">
+          <ViewCover posterUrls={matches.slice(0, 3).map((entry) => entry.posterUrl)} />
+        </div>
+
+        <h3 className="mt-[9px] line-clamp-1 text-[15px] font-bold">{view.title}</h3>
+        {conditions.length > 0 && (
+          <p className="mt-1 line-clamp-1 text-[12px] text-text-2">
+            {conditions.slice(0, 3).join(' · ')}
+            {conditions.length > 3 && ` +${conditions.length - 3}`}
+          </p>
+        )}
+        <p className="mt-1 text-[12px] text-text-3">
+          {matches.length} {entriesWord(matches.length)} · обновляется само
+        </p>
+      </Link>
+
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label={`Удалить фильтр «${view.title}»`}
+        className="absolute top-[6px] right-[36px] z-10 flex h-[24px] w-[24px] items-center justify-center rounded-full bg-bg text-text-2 opacity-0 transition-opacity duration-[120ms] hover:text-text focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+      >
+        <Trash2 size={13} strokeWidth={1.5} />
+      </button>
+    </div>
   );
 }

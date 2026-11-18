@@ -5,12 +5,13 @@ import Link from 'next/link';
 
 import { Carousel } from '@/components/Carousel';
 import { GenreDoor } from '@/components/GenreDoor';
-import { ListCover } from '@/components/ListCover';
+import { ListCover, ViewCover } from '@/components/ListCover';
 import { Shelf } from '@/components/Shelf';
 import { useCollection } from '@/components/CollectionProvider';
 import { useLists } from '@/components/ListsProvider';
 import { useSearch } from '@/components/SearchProvider';
 import { entriesWord } from '@/lib/collection';
+import { activeConditions, applyFilters, parseFilters } from '@/lib/filters';
 import { QP, catalogHref } from '@/lib/query';
 
 const RECENT = 12;
@@ -112,20 +113,33 @@ function MyLists() {
 
       {views.length > 0 && (
         <div
-          className={`grid grid-cols-1 gap-[var(--gap)] min-[600px]:grid-cols-2 min-[900px]:grid-cols-3 ${
+          className={`flex gap-[var(--gap)] overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
             lists.length > 0 ? 'mt-3' : 'mt-[13px]'
           }`}
         >
-          {views.map((view) => (
-            <Link
-              key={`view-${view.id}`}
-              href={`/vse-kino?${view.query}`}
-              className="rounded-sm bg-surface px-[13px] py-[11px] transition-colors duration-[120ms] hover:bg-surface-2"
-            >
-              <span className="block truncate text-[13px] font-medium">{view.title}</span>
-              <span className="mt-1 block text-[11.5px] text-text-3">обновляется само</span>
-            </Link>
-          ))}
+          {views.map((view) => {
+            const filters = parseFilters(new URLSearchParams(view.query));
+            const matches = applyFilters(entries, filters);
+            const conditions = activeConditions(filters);
+
+            return (
+              <Link key={`view-${view.id}`} href={`/vse-kino?${view.query}`} className="w-[240px] shrink-0">
+                <div className="transition-transform duration-150 ease-out hover:scale-[1.03]">
+                  <ViewCover posterUrls={matches.slice(0, 3).map((entry) => entry.posterUrl)} />
+                </div>
+                <h3 className="mt-[9px] line-clamp-1 text-[15px] font-bold">{view.title}</h3>
+                {conditions.length > 0 && (
+                  <p className="mt-1 line-clamp-1 text-[12px] text-text-2">
+                    {conditions.slice(0, 3).join(' · ')}
+                    {conditions.length > 3 && ` +${conditions.length - 3}`}
+                  </p>
+                )}
+                <p className="mt-1 text-[12px] text-text-3">
+                  {matches.length} {entriesWord(matches.length)} · обновляется само
+                </p>
+              </Link>
+            );
+          })}
         </div>
       )}
     </section>
