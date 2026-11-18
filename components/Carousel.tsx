@@ -62,7 +62,7 @@ export function Carousel({ entries }: { entries: Entry[] }) {
     <section>
       <div className="flex items-center gap-[10px]">
         <h2 className="text-[17px] font-bold">Последние добавленные</h2>
-        <span className="h-px flex-1 bg-line" />
+        <span className="flex-1" />
         <button
           type="button"
           onClick={() => step(-1)}
@@ -133,7 +133,7 @@ function Card({ entry }: { entry: Entry }) {
       type="button"
       onClick={() => openCard(entry.id)}
       aria-label={`${entry.title}: открыть карточку`}
-      className="block w-full rounded-md border border-line bg-surface p-[10px] text-left"
+      className="flex h-full w-full flex-col rounded-md border border-line bg-surface p-[10px] text-left"
     >
       <span className="relative flex aspect-[16/9] items-center justify-center overflow-hidden rounded-sm bg-surface-2 text-icon-dim">
         {entry.backdropUrl ? (
@@ -161,13 +161,17 @@ function Card({ entry }: { entry: Entry }) {
 
       <span className="mt-1 line-clamp-1 block text-[11.5px] text-text-3">{meta || '—'}</span>
 
-      {rating && (
-        <span className="mt-[9px] flex items-center gap-[6px] text-[11.5px]">
-          <Star size={12} strokeWidth={1.5} className="fill-gold text-gold" />
-          <span className="text-gold">{rating.value}</span>
-          <span className="text-text-3">{rating.own ? 'моя' : 'КП'}</span>
-        </span>
-      )}
+      {/* Строка оценки держит место всегда — иначе карточка без оценки
+          схлопывается и становится ниже соседних в ряду (правка, п.2). */}
+      <span className="mt-[9px] flex min-h-[15px] items-center gap-[6px] text-[11.5px]">
+        {rating && (
+          <>
+            <Star size={12} strokeWidth={1.5} className="fill-gold text-gold" />
+            <span className="text-gold">{rating.value}</span>
+            <span className="text-text-3">{rating.own ? 'моя' : 'КП'}</span>
+          </>
+        )}
+      </span>
     </button>
   );
 }

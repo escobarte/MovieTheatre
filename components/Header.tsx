@@ -41,7 +41,7 @@ export function Header() {
   );
 
   return (
-    <header className="flex flex-col gap-3 border-b border-line py-[18px] min-[600px]:flex-row min-[600px]:flex-wrap min-[600px]:items-center min-[600px]:gap-6">
+    <header className="flex flex-col gap-3 py-[18px] min-[600px]:flex-row min-[600px]:flex-wrap min-[600px]:items-center min-[600px]:gap-6">
       <Link href="/" className="text-[15px] font-bold tracking-[.1em] whitespace-nowrap">
         MOVIE<span className="text-red">_</span>THEATRE
       </Link>

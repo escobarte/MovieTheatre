@@ -13,6 +13,10 @@ import { Poster } from './Poster';
  * Вертикальный padding обязателен, иначе увеличенный при наведении постер
  * подрежется краем прокрутки (6.6).
  *
+ * Полка на Главной лежит в боксе небесно-голубого оттенка (правка по
+ * замечаниям, п.3) — цвет только здесь, в правило двух акцентов и в общие
+ * токены поверхностей не входит.
+ *
  * Пустая полка не отображается вовсе — заглушек «здесь пока ничего нет»
  * быть не должно (5.2).
  */
@@ -32,14 +36,17 @@ export function Shelf({
   if (entries.length === 0) return null;
 
   return (
-    <section className="mt-[26px]">
+    <section
+      className="mt-[20px] rounded-lg border pt-[16px] pr-[20px] pb-[20px] pl-[20px]"
+      style={{ background: 'var(--panel-sky)', borderColor: 'var(--panel-sky-line)' }}
+    >
       <div className="flex items-center gap-[10px]">
         <Icon size={18} strokeWidth={1.5} className="shrink-0 text-red" />
         <h2 className="text-[17px] font-bold">{title}</h2>
         <span className="rounded-pill bg-surface-2 px-[8px] py-[2px] text-[11.5px] text-text-2">
           {entries.length}
         </span>
-        <span className="h-px flex-1 bg-line" />
+        <span className="flex-1" />
         <Link
           href={href}
           className="shrink-0 text-[12.5px] text-text-2 transition-colors duration-[120ms] hover:text-text"

@@ -80,14 +80,17 @@ function MyLists() {
   const byId = new Map(entries.map((entry) => [entry.id, entry]));
 
   return (
-    <section className="mt-[26px]">
+    <section
+      className="mt-[20px] rounded-lg border pt-[16px] pr-[20px] pb-[20px] pl-[20px]"
+      style={{ background: 'var(--panel-sky)', borderColor: 'var(--panel-sky-line)' }}
+    >
       <div className="flex items-center gap-[10px]">
         <List size={18} strokeWidth={1.5} className="shrink-0 text-red" />
         <h2 className="text-[17px] font-bold">Мои списки</h2>
         <span className="rounded-pill bg-surface-2 px-[8px] py-[2px] text-[11.5px] text-text-2">
           {lists.length + views.length}
         </span>
-        <span className="h-px flex-1 bg-line" />
+        <span className="flex-1" />
         <Link href="/spiski" className="shrink-0 text-[12.5px] text-text-2 transition-colors duration-[120ms] hover:text-text">
           Все →
         </Link>
