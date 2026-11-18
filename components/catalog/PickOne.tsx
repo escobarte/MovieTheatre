@@ -3,17 +3,25 @@
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-/** Селектор с одним значением: сортировка, источник оценки. Вид тот же (6.5). */
+/**
+ * Селектор с одним значением: сортировка, источник оценки (6.5). Вид как у
+ * прочих фильтров, но сортировка — исключение из правила «выбрано/не
+ * выбрано» (правка п.2): у неё значение есть всегда, поэтому она всегда
+ * в виде «не выбрано» и не красная. Для остальных вызов передаёт `active`,
+ * когда значение отличается от нейтрального.
+ */
 export function PickOne<T extends string>({
   label,
   value,
   options,
   onChange,
+  active = false,
 }: {
   label?: string;
   value: T;
   options: { value: T; label: string }[];
   onChange: (value: T) => void;
+  active?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -44,7 +52,11 @@ export function PickOne<T extends string>({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="inline-flex items-center gap-[6px] rounded-pill bg-surface px-[14px] py-[7px] text-[12px] whitespace-nowrap text-text-2 transition-colors duration-[120ms] hover:text-text"
+        className={`inline-flex items-center gap-[6px] rounded-pill px-[14px] py-[7px] text-[12px] whitespace-nowrap transition-colors duration-[120ms] ${
+          active
+            ? 'bg-red font-medium text-white hover:bg-red-hover'
+            : 'border border-line-strong text-text hover:bg-surface-2'
+        }`}
       >
         {label ? `${label}: ${current}` : current}
         <ChevronDown size={13} strokeWidth={1.5} />

@@ -40,7 +40,7 @@ export function Poster({ entry, badge }: { entry: Entry; badge?: string }) {
           )}
 
           {badge && (
-            <span className="absolute right-1 bottom-1 rounded-xs bg-bg/85 px-[5px] py-[2px] text-[11px] font-medium text-text">
+            <span className="absolute bottom-1.5 left-1.5 rounded-xs bg-text px-[6px] py-[3px] text-[11px] font-bold text-bg">
               {badge}
             </span>
           )}

@@ -10,6 +10,7 @@
   --surface-2:  #1E1E23;   /* подложка постера, разделители */
   --surface-3:  #26262C;   /* вторичная кнопка, дорожка ползунка */
   --line:       #1E1E23;
+  --line-strong: #3A3A42;  /* рамка невыбранной пилюли и фильтра */
 
   --text:       #F5F5F7;
   --text-2:     #A1A1AA;
@@ -37,6 +38,7 @@
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
   --color-line:      var(--line);
+  --color-line-strong: var(--line-strong);
 
   --color-text:     var(--text);
   --color-text-2:   var(--text-2);
@@ -108,6 +110,7 @@ body {
   border: 1px solid var(--surface-3);
   border-radius: var(--r-sm);
   padding: 7px 10px;
+  color: var(--text);
   caret-color: var(--red);
 }
 
@@ -121,4 +124,16 @@ body {
 
 .field:focus {
   border-color: var(--text-3);
+}
+
+/* Правка по ручной проверке (узкие числовые поля, п.6): спиннеры съедают
+   и так тесную ширину числового поля, значение от этого обрезается сильнее. */
+input[type='number'] {
+  appearance: textfield;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
 }

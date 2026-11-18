@@ -65,7 +65,9 @@ export function FilterSelect({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className={`inline-flex items-center gap-[6px] rounded-pill px-[14px] py-[7px] text-[12px] whitespace-nowrap transition-colors duration-[120ms] ${
-          active ? 'bg-surface-3 text-text' : 'bg-surface text-text-2 hover:text-text'
+          active
+            ? 'bg-red font-medium text-white hover:bg-red-hover'
+            : 'border border-line-strong text-text hover:bg-surface-2'
         }`}
       >
         {caption}

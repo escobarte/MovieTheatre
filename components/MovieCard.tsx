@@ -241,7 +241,7 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
               href={`https://www.youtube.com/watch?v=${movie.trailerKey}`}
               target="_blank"
               rel="noreferrer"
-              className="mt-3 flex items-center justify-center gap-[7px] rounded-pill bg-surface-3 px-[18px] py-[9px] text-[12.5px] font-medium transition-colors duration-[120ms] hover:bg-surface-2"
+              className="mt-3 flex items-center justify-center gap-[7px] rounded-pill bg-text px-[18px] py-[9px] text-[12.5px] font-medium text-bg transition-colors duration-[120ms] hover:bg-white"
             >
               <Play size={15} strokeWidth={1.5} />
               Трейлер
@@ -272,11 +272,11 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
             {isTv ? (
               <>
                 <Row label="Объём">
-                  <span className="flex items-center gap-1">
+                  <span className="flex flex-wrap items-center gap-[6px]">
                     <EditNumber
                       value={movie.seasons}
                       onSave={(seasons) => save({ seasons })}
-                      width={48}
+                      width="calc(4ch + 22px)"
                     />
                     <span className="text-text-3">
                       {movie.seasons ? plural(movie.seasons, 'сезон', 'сезона', 'сезонов') : 'сезонов'},
@@ -284,7 +284,7 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
                     <EditNumber
                       value={movie.episodes}
                       onSave={(episodes) => save({ episodes })}
-                      width={48}
+                      width="calc(4ch + 22px)"
                     />
                     <span className="text-text-3">
                       {movie.episodes ? plural(movie.episodes, 'серия', 'серии', 'серий') : 'серий'},
@@ -293,25 +293,25 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
                     <EditNumber
                       value={movie.runtime}
                       onSave={(runtime) => save({ runtime })}
-                      width={48}
+                      width="calc(4ch + 22px)"
                     />
                     <span className="text-text-3">мин серия</span>
                   </span>
                 </Row>
 
                 <Row label="Прогресс">
-                  <span className="flex items-center gap-1 text-text-3">
-                    S
+                  <span className="flex flex-wrap items-center gap-[6px] text-text-3">
+                    Сезон
                     <EditNumber
                       value={movie.progressSeason}
                       onSave={(progressSeason) => save({ progressSeason })}
-                      width={44}
+                      width="calc(4ch + 22px)"
                     />
-                    E
+                    Серия
                     <EditNumber
                       value={movie.progressEpisode}
                       onSave={(progressEpisode) => save({ progressEpisode })}
-                      width={44}
+                      width="calc(4ch + 22px)"
                     />
                   </span>
                 </Row>
@@ -319,7 +319,11 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
             ) : (
               <Row label="Хронометраж">
                 <span className="flex items-center gap-1">
-                  <EditNumber value={movie.runtime} onSave={(runtime) => save({ runtime })} width={56} />
+                  <EditNumber
+                    value={movie.runtime}
+                    onSave={(runtime) => save({ runtime })}
+                    width="calc(4ch + 22px)"
+                  />
                   <span className="text-text-3">мин</span>
                 </span>
               </Row>
@@ -699,7 +703,7 @@ function EditNumber({
 }: {
   value: number | null;
   onSave: (value: number | null) => void;
-  width: number;
+  width: number | string;
   step?: string;
 }) {
   return (

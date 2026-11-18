@@ -163,22 +163,27 @@ function Catalog() {
         </span>
         <span className="flex-1" />
 
-        <div className="flex rounded-pill bg-surface p-[3px]">
-          {TYPES.map((type) => (
-            <button
-              key={type.value}
-              type="button"
-              onClick={() => update({ type: type.value })}
-              className={`rounded-pill px-[17px] py-[7px] text-[12.5px] transition-colors duration-[120ms] ${
-                filters.type === type.value
-                  ? 'bg-surface-3 font-medium text-text'
-                  : 'text-text-2 hover:text-text'
-              }`}
-            >
-              {type.label}
-              <span className="ml-[6px] text-text-3">{counts[type.value]}</span>
-            </button>
-          ))}
+        <div className="flex gap-[6px]">
+          {TYPES.map((type) => {
+            const active = filters.type === type.value;
+            return (
+              <button
+                key={type.value}
+                type="button"
+                onClick={() => update({ type: type.value })}
+                className={`rounded-pill px-[17px] py-[7px] text-[12.5px] whitespace-nowrap transition-colors duration-[120ms] ${
+                  active
+                    ? 'bg-red font-medium text-white hover:bg-red-hover'
+                    : 'border border-line-strong text-text hover:bg-surface-2'
+                }`}
+              >
+                {type.label}
+                <span className={`ml-[6px] ${active ? 'text-white' : 'text-text-3'}`}>
+                  {counts[type.value]}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -308,11 +313,13 @@ function Catalog() {
             label="Оценка"
             value={String(filters.min)}
             options={MIN_RATINGS}
+            active={filters.min > 0}
             onChange={(min) => update({ min: Number(min) })}
           />
           <PickOne<RatingSource>
             value={filters.minOf}
             options={RATING_SOURCES}
+            active={filters.min > 0}
             onChange={(minOf) => update({ minOf })}
           />
         </span>
@@ -345,7 +352,15 @@ function Catalog() {
       {visible.length > 0 ? (
         <div className="mt-4 grid grid-cols-2 gap-[var(--gap)] min-[600px]:grid-cols-3 min-[900px]:grid-cols-5 min-[1280px]:grid-cols-6">
           {visible.map((entry) => (
-            <Poster key={entry.id} entry={entry} />
+            <Poster
+              key={entry.id}
+              entry={entry}
+              badge={
+                entry.kind === 'tv' && entry.progressSeason && entry.progressEpisode
+                  ? `S${entry.progressSeason} · E${entry.progressEpisode}`
+                  : undefined
+              }
+            />
           ))}
         </div>
       ) : (
@@ -442,7 +457,7 @@ function GenreRow({
           <button
             type="button"
             onClick={() => setExpanded(true)}
-            className="inline-flex items-center gap-[6px] rounded-pill bg-surface-3 px-[15px] py-[7px] text-[12.5px] font-medium whitespace-nowrap text-text transition-colors duration-[120ms] hover:bg-surface"
+            className="inline-flex items-center gap-[6px] rounded-pill border border-line-strong px-[15px] py-[7px] text-[12.5px] whitespace-nowrap text-text transition-colors duration-[120ms] hover:bg-surface-2"
           >
             Ещё {hiddenCount}
             <ChevronDown size={13} strokeWidth={1.5} />
@@ -453,7 +468,7 @@ function GenreRow({
           <button
             type="button"
             onClick={() => setExpanded(false)}
-            className="inline-flex items-center rounded-pill bg-surface-3 px-[15px] py-[7px] text-[12.5px] font-medium whitespace-nowrap text-text transition-colors duration-[120ms] hover:bg-surface"
+            className="inline-flex items-center rounded-pill border border-line-strong px-[15px] py-[7px] text-[12.5px] whitespace-nowrap text-text transition-colors duration-[120ms] hover:bg-surface-2"
           >
             Свернуть
           </button>
@@ -480,11 +495,13 @@ function GenrePill({
       tabIndex={tabIndex}
       onClick={onClick}
       className={`rounded-pill px-[15px] py-[7px] whitespace-nowrap transition-colors duration-[120ms] ${
-        on ? 'bg-red font-medium text-white hover:bg-red-hover' : 'text-text-2 hover:bg-surface hover:text-text'
+        on
+          ? 'bg-red font-medium text-white hover:bg-red-hover'
+          : 'border border-line-strong text-text hover:bg-surface-2'
       }`}
     >
       {option.label}
-      <span className={`ml-[6px] ${on ? 'text-white/70' : 'text-text-3'}`}>{option.count}</span>
+      <span className={`ml-[6px] ${on ? 'text-white' : 'text-text-3'}`}>{option.count}</span>
     </button>
   );
 }
@@ -524,11 +541,13 @@ function Toggle({
       type="button"
       onClick={onClick}
       className={`inline-flex items-center gap-[6px] rounded-pill px-[14px] py-[7px] text-[12px] whitespace-nowrap transition-colors duration-[120ms] ${
-        on ? 'bg-surface-3 text-text' : 'bg-surface text-text-2 hover:text-text'
+        on
+          ? 'bg-red font-medium text-white hover:bg-red-hover'
+          : 'border border-line-strong text-text hover:bg-surface-2'
       }`}
     >
       {label}
-      <span className="text-text-3">{count}</span>
+      <span className={on ? 'text-white' : 'text-text-3'}>{count}</span>
     </button>
   );
 }

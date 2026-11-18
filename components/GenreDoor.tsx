@@ -86,7 +86,7 @@ export function GenreDoor({ entries, limit = 8 }: { entries: Entry[]; limit?: nu
       >
         <Link
           href="/vse-kino"
-          className="rounded-pill bg-red px-[15px] py-[7px] font-medium whitespace-nowrap text-white transition-colors duration-[120ms] hover:bg-red-hover"
+          className="rounded-pill border border-line-strong px-[15px] py-[7px] whitespace-nowrap text-text transition-colors duration-[120ms] hover:bg-surface-2 active:border-red active:bg-red active:font-medium active:text-white"
         >
           Всё кино
         </Link>
@@ -95,7 +95,7 @@ export function GenreDoor({ entries, limit = 8 }: { entries: Entry[]; limit?: nu
           <Link
             key={genre}
             href={catalogHref({ [QP.genre]: genre })}
-            className="rounded-pill px-[15px] py-[7px] whitespace-nowrap text-text-2 transition-colors duration-[120ms] hover:bg-surface hover:text-text"
+            className="rounded-pill border border-line-strong px-[15px] py-[7px] whitespace-nowrap text-text transition-colors duration-[120ms] hover:bg-surface-2 active:border-red active:bg-red active:font-medium active:text-white"
           >
             {capitalize(genre)}
           </Link>
