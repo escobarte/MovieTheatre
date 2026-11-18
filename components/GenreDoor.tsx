@@ -51,7 +51,7 @@ export function GenreDoor({ entries, limit = 8 }: { entries: Entry[]; limit?: nu
   };
 
   return (
-    <section className="mt-[26px] border-t border-line pt-[18px]">
+    <section className="mt-[26px] rounded-lg border border-line bg-surface p-[20px]">
       <div className="flex items-baseline gap-[10px]">
         <p className="text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">
           Выбери жанр — откроется каталог с этим фильтром

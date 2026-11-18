@@ -4,7 +4,7 @@ import { AlertCircle, Check, Image as ImageIcon, Play, Plus, Star, X } from 'luc
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Select } from '@/components/catalog/Select';
-import { FILE_STATUS_LABELS, STATUS_LABELS, formatGb, plural } from '@/lib/collection';
+import { FILE_STATUS_LABELS, STATUS_DOT, STATUS_LABELS, formatGb, plural } from '@/lib/collection';
 import type { FileStatus, Movie, Status } from '@/lib/db/schema';
 
 import { useCollection } from './CollectionProvider';
@@ -362,6 +362,7 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
               .map(([value, label]) => ({ value, label }))}
             value={movie.status}
             onPick={(status) => save({ status: status as Status })}
+            dot={(value) => STATUS_DOT[value as Status]}
           />
         </Row>
 
@@ -687,27 +688,40 @@ function Pills({
   options,
   value,
   onPick,
+  dot,
 }: {
   options: { value: string; label: string }[];
   value: string;
   onPick: (value: string) => void;
+  /** Цвет точки перед подписью — сейчас только у «Статуса» (6.4). */
+  dot?: (value: string) => string | undefined;
 }) {
   return (
     <div className="flex flex-wrap gap-[6px]">
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          onClick={() => onPick(option.value)}
-          className={`rounded-pill px-[15px] py-[7px] text-[12px] transition-colors duration-[120ms] ${
-            option.value === value
-              ? 'bg-red font-medium text-white hover:bg-red-hover'
-              : 'bg-surface-3 text-text-2 hover:text-text'
-          }`}
-        >
-          {option.label}
-        </button>
-      ))}
+      {options.map((option) => {
+        const on = option.value === value;
+        const dotColor = dot?.(option.value);
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onPick(option.value)}
+            className={`inline-flex items-center gap-[7px] rounded-pill px-[15px] py-[7px] text-[12px] transition-colors duration-[120ms] ${
+              on
+                ? 'bg-red font-medium text-white hover:bg-red-hover'
+                : 'bg-surface-3 text-text-2 hover:text-text'
+            }`}
+          >
+            {dotColor && (
+              <span
+                className="h-[7px] w-[7px] shrink-0 rounded-full"
+                style={{ background: on ? '#FFFFFF' : dotColor }}
+              />
+            )}
+            {option.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

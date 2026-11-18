@@ -5,22 +5,29 @@
    или через утилиты Tailwind, объявленные в @theme ниже.                  */
 
 :root {
-  --bg:         #0B0B0D;   /* фон страницы */
-  --surface:    #16161A;   /* панели, карточки, поле поиска */
-  --surface-2:  #1E1E23;   /* подложка постера, разделители */
-  --surface-3:  #26262C;   /* вторичная кнопка, дорожка ползунка */
-  --line:       #1E1E23;
-  --line-strong: #3A3A42;  /* рамка невыбранной пилюли и фильтра */
+  --bg:         #121217;   /* фон страницы */
+  --surface:    #1A1A20;   /* панели, карточки, поле поиска */
+  --surface-2:  #23232A;   /* подложка постера, разделители */
+  --surface-3:  #2D2D35;   /* вторичная кнопка, дорожка ползунка */
+  --line:       #26262D;
+  --line-strong: #3A3A44;  /* рамка невыбранной пилюли и фильтра */
 
   --text:       #F5F5F7;
   --text-2:     #A1A1AA;
-  --text-3:     #6B6B73;
-  --text-4:     #5E5E67;
-  --icon-dim:   #34343C;   /* иконка внутри пустого постера */
+  --text-3:     #8E8E98;
+  --text-4:     #80808A;
+  --icon-dim:   #45454F;   /* иконка внутри пустого постера, видна на --surface-2 */
 
   --red:        #E5142B;
   --red-hover:  #FF2740;
   --gold:       #F5B01A;
+
+  /* Цвета статусов просмотра — только точка перед подписью и полоска
+     прогресса (6.4), текст статуса не красится. */
+  --st-watching: #5AA2FF; /* Смотрю */
+  --st-watched:  #3DBE84; /* Смотрел */
+  --st-planned:  var(--red); /* Буду смотреть */
+  --st-none:     var(--text-3); /* Не смотрел, Не стоит смотреть */
 
   --r-pill: 999px;
   --r-lg:    12px;   /* оверлей, крупные блоки */
@@ -49,6 +56,11 @@
   --color-red:       var(--red);
   --color-red-hover: var(--red-hover);
   --color-gold:      var(--gold);
+
+  --color-st-watching: var(--st-watching);
+  --color-st-watched:  var(--st-watched);
+  --color-st-planned:  var(--st-planned);
+  --color-st-none:     var(--st-none);
 
   --radius-pill: var(--r-pill);
   --radius-lg:   var(--r-lg);

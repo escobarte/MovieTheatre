@@ -10,7 +10,7 @@ import { useCollection } from '@/components/CollectionProvider';
 import { useDisks } from '@/components/DisksProvider';
 import { useLists } from '@/components/ListsProvider';
 import { Poster } from '@/components/Poster';
-import { entriesWord, type Entry } from '@/lib/collection';
+import { entriesWord, STATUS_DOT, type Entry, type Status } from '@/lib/collection';
 import {
   EMPTY,
   RATING_SOURCES,
@@ -211,6 +211,7 @@ function Catalog() {
             options={options(entries, filters, category, titlesFor(category))}
             selected={filters[category]}
             onChange={(next) => update({ [category]: next } as Partial<Filters>)}
+            dot={category === 'status' ? (value) => STATUS_DOT[value as Status] : undefined}
           />
         ))}
 

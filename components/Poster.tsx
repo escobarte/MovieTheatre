@@ -1,8 +1,8 @@
 'use client';
 
-import { Image as ImageIcon } from 'lucide-react';
+import { Image as ImageIcon, Star } from 'lucide-react';
 
-import { posterRating, type Entry } from '@/lib/collection';
+import { posterRating, tvProgress, type Entry } from '@/lib/collection';
 
 import { useCard } from './CardProvider';
 
@@ -15,6 +15,7 @@ import { useCard } from './CardProvider';
 export function Poster({ entry, badge }: { entry: Entry; badge?: string }) {
   const { openCard } = useCard();
   const rating = posterRating(entry);
+  const progress = entry.status === 'watching' ? tvProgress(entry) : null;
 
   return (
     <article>
@@ -46,12 +47,27 @@ export function Poster({ entry, badge }: { entry: Entry; badge?: string }) {
           )}
         </div>
 
+        {progress !== null && (
+          <div className="mt-[6px] h-[3px] overflow-hidden rounded-pill bg-surface-3">
+            <div
+              className="h-full rounded-pill bg-st-watching"
+              style={{ width: `${progress * 100}%` }}
+            />
+          </div>
+        )}
+
         <h3 className="mt-[9px] line-clamp-2 text-[12.5px] font-medium">{entry.title}</h3>
       </button>
 
       <div className="mt-1 flex items-center justify-between gap-2 text-[11.5px]">
         <span className="text-text-3">{entry.year ?? '—'}</span>
-        {rating && <span className={rating.own ? 'text-gold' : 'text-text-3'}>{rating.value}</span>}
+        {rating && (
+          <span className="flex items-center gap-[4px]">
+            <Star size={11} strokeWidth={1.5} className="fill-gold text-gold" />
+            <span className="text-gold">{rating.value}</span>
+            <span className="text-text-3">{rating.own ? 'моя' : 'КП'}</span>
+          </span>
+        )}
       </div>
     </article>
   );

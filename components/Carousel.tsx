@@ -3,7 +3,7 @@
 import { ChevronLeft, ChevronRight, Image as ImageIcon, Star } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { STATUS_LABELS, addedLabel, type Entry } from '@/lib/collection';
+import { STATUS_DOT, STATUS_LABELS, addedLabel, posterRating, type Entry } from '@/lib/collection';
 
 import { useCard } from './CardProvider';
 
@@ -60,15 +60,15 @@ export function Carousel({ entries }: { entries: Entry[] }) {
 
   return (
     <section>
-      <div className="flex items-baseline gap-[10px]">
+      <div className="flex items-center gap-[10px]">
         <h2 className="text-[17px] font-bold">Последние добавленные</h2>
-        <span className="flex-1" />
+        <span className="h-px flex-1 bg-line" />
         <button
           type="button"
           onClick={() => step(-1)}
           disabled={page === 0}
           aria-label="Предыдущие"
-          className="text-text-2 transition-colors duration-[120ms] hover:text-text disabled:text-icon-dim"
+          className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-pill border border-line-strong text-text-2 transition-colors duration-[120ms] hover:text-text disabled:text-icon-dim disabled:hover:text-icon-dim"
         >
           <ChevronLeft size={16} strokeWidth={1.5} />
         </button>
@@ -77,7 +77,7 @@ export function Carousel({ entries }: { entries: Entry[] }) {
           onClick={() => step(1)}
           disabled={page >= pages - 1}
           aria-label="Следующие"
-          className="text-text-2 transition-colors duration-[120ms] hover:text-text disabled:text-icon-dim"
+          className="flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-pill border border-line-strong text-text-2 transition-colors duration-[120ms] hover:text-text disabled:text-icon-dim disabled:hover:text-icon-dim"
         >
           <ChevronRight size={16} strokeWidth={1.5} />
         </button>
@@ -124,7 +124,7 @@ export function Carousel({ entries }: { entries: Entry[] }) {
 
 function Card({ entry }: { entry: Entry }) {
   const { openCard } = useCard();
-  const rating = entry.rating ?? entry.ratingKp;
+  const rating = posterRating(entry);
   // По 5.2 в карточке год и режиссёр; у сериала в этом поле создатель.
   const meta = [entry.year, entry.director].filter(Boolean).join(' · ');
 
@@ -133,15 +133,24 @@ function Card({ entry }: { entry: Entry }) {
       type="button"
       onClick={() => openCard(entry.id)}
       aria-label={`${entry.title}: открыть карточку`}
-      className="block w-full rounded-md bg-surface p-[10px] text-left"
+      className="block w-full rounded-md border border-line bg-surface p-[10px] text-left"
     >
-      <span className="flex aspect-[16/9] items-center justify-center overflow-hidden rounded-sm bg-surface-2 text-icon-dim">
+      <span className="relative flex aspect-[16/9] items-center justify-center overflow-hidden rounded-sm bg-surface-2 text-icon-dim">
         {entry.backdropUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={entry.backdropUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
         ) : (
           <ImageIcon size={22} strokeWidth={1.5} />
         )}
+
+        {/* Пометка статуса лежит на кадре — в строке под названием её больше нет. */}
+        <span className="absolute top-[10px] left-[10px] flex items-center gap-[6px] rounded-pill bg-[rgba(18,18,23,.8)] px-[10px] py-[4px] text-[11.5px] text-text">
+          <span
+            className="h-[7px] w-[7px] shrink-0 rounded-full"
+            style={{ background: STATUS_DOT[entry.status] }}
+          />
+          {statusLabel(entry)}
+        </span>
       </span>
 
       <span className="mt-[11px] block text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">
@@ -152,23 +161,21 @@ function Card({ entry }: { entry: Entry }) {
 
       <span className="mt-1 line-clamp-1 block text-[11.5px] text-text-3">{meta || '—'}</span>
 
-      <span className="mt-[9px] flex items-center gap-[6px] text-[11.5px]">
-        {rating !== null && (
-          <>
-            <Star size={12} strokeWidth={1.5} className="fill-gold text-gold" />
-            <span className="text-gold">{entry.rating ?? rating.toFixed(1)}</span>
-            <span className="text-icon-dim">·</span>
-          </>
-        )}
-        <span className="text-text-2">{statusLabel(entry)}</span>
-      </span>
+      {rating && (
+        <span className="mt-[9px] flex items-center gap-[6px] text-[11.5px]">
+          <Star size={12} strokeWidth={1.5} className="fill-gold text-gold" />
+          <span className="text-gold">{rating.value}</span>
+          <span className="text-text-3">{rating.own ? 'моя' : 'КП'}</span>
+        </span>
+      )}
     </button>
   );
 }
 
 function statusLabel(entry: Entry): string {
+  const base = STATUS_LABELS[entry.status];
   if (entry.kind === 'tv' && entry.progressSeason && entry.progressEpisode) {
-    return `S${entry.progressSeason} · E${entry.progressEpisode}`;
+    return `${base} · S${entry.progressSeason} E${entry.progressEpisode}`;
   }
-  return STATUS_LABELS[entry.status].toLowerCase();
+  return base;
 }

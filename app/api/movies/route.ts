@@ -22,6 +22,8 @@ export const dynamic = 'force-dynamic';
  * заметное утяжеление — три-четыре имени на запись.
  *
  * И episodes: часы по сериалу это минуты в серии на число серий (5.10).
+ * seasons идёт в паре с episodes — без него не прикинуть долю полоски
+ * прогресса «Смотрю сейчас» (правка по макету, п.4).
  *
  * backdropUrl — кадр 16:9 в карусели «Последние добавленные» (5.2); без
  * него карусель не отличить от пустого состояния.
@@ -35,6 +37,7 @@ const lightColumns = {
   posterUrl: movies.posterUrl,
   backdropUrl: movies.backdropUrl,
   runtime: movies.runtime,
+  seasons: movies.seasons,
   episodes: movies.episodes,
   genres: movies.genres,
   countries: movies.countries,

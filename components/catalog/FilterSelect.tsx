@@ -16,11 +16,14 @@ export function FilterSelect({
   options,
   selected,
   onChange,
+  dot,
 }: {
   label: string;
   options: Option[];
   selected: string[];
   onChange: (next: string[]) => void;
+  /** Цвет точки перед значением — сейчас только у фильтра «Статус» (6.4). */
+  dot?: (value: string) => string | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -98,6 +101,12 @@ export function FilterSelect({
                 <span className="w-[14px] shrink-0 text-red">
                   {on && <Check size={14} strokeWidth={1.5} />}
                 </span>
+                {dot?.(option.value) && (
+                  <span
+                    className="h-[7px] w-[7px] shrink-0 rounded-full"
+                    style={{ background: dot(option.value) }}
+                  />
+                )}
                 <span className={`flex-1 ${on ? 'text-text' : 'text-text-2'}`}>{option.label}</span>
                 <span className={option.count === 0 ? 'text-text-4' : 'text-text-3'}>
                   {option.count}

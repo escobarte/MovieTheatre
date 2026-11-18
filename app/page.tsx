@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronRight, HardDriveDownload, List, Plus, PlayCircle, RotateCw } from 'lucide-react';
+import { HardDriveDownload, List, Plus, PlayCircle, RotateCw } from 'lucide-react';
 import Link from 'next/link';
 
 import { Carousel } from '@/components/Carousel';
@@ -84,14 +84,12 @@ function MyLists() {
       <div className="flex items-center gap-[10px]">
         <List size={18} strokeWidth={1.5} className="shrink-0 text-red" />
         <h2 className="text-[17px] font-bold">Мои списки</h2>
-        <span className="text-[12px] text-text-3">{lists.length + views.length}</span>
-        <span className="flex-1" />
-        <Link
-          href="/spiski"
-          aria-label="Открыть все подборки"
-          className="text-text-2 transition-colors duration-[120ms] hover:text-text"
-        >
-          <ChevronRight size={16} strokeWidth={1.5} />
+        <span className="rounded-pill bg-surface-2 px-[8px] py-[2px] text-[11.5px] text-text-2">
+          {lists.length + views.length}
+        </span>
+        <span className="h-px flex-1 bg-line" />
+        <Link href="/spiski" className="shrink-0 text-[12.5px] text-text-2 transition-colors duration-[120ms] hover:text-text">
+          Все →
         </Link>
       </div>
 

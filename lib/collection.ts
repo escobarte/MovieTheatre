@@ -12,6 +12,7 @@ export type LightRow = {
   posterUrl: string | null;
   backdropUrl: string | null;
   runtime: number | null;
+  seasons: number | null;
   episodes: number | null;
   genres: string | null;
   countries: string | null;
@@ -59,6 +60,31 @@ export const FILE_STATUS_LABELS: Record<FileStatus, string> = {
   have: 'Скачан',
   deleted: 'Удалён после просмотра',
 };
+
+/** Цвет точки статуса (правка по макету, п.3). Текст статуса не красится. */
+export const STATUS_DOT: Record<Status, string> = {
+  none: 'var(--st-none)',
+  watched: 'var(--st-watched)',
+  planned: 'var(--st-planned)',
+  watching: 'var(--st-watching)',
+  skip: 'var(--st-none)',
+};
+
+/**
+ * Доля просмотра сериала для полоски прогресса (правка по макету, п.4):
+ * серии считаются поровну по сезонам, точного числа серий в каждом сезоне
+ * нет, поэтому доля приблизительная. Без числа сезонов или серий полоску
+ * не показать.
+ */
+export function tvProgress(entry: Entry): number | null {
+  if (!entry.seasons || !entry.episodes || !entry.progressSeason || !entry.progressEpisode) {
+    return null;
+  }
+
+  const perSeason = entry.episodes / entry.seasons;
+  const watched = (entry.progressSeason - 1) * perSeason + entry.progressEpisode;
+  return Math.min(Math.max(watched / entry.episodes, 0), 1);
+}
 
 function parseList(value: string | null): string[] {
   if (!value) return [];

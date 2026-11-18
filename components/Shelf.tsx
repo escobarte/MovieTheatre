@@ -1,6 +1,5 @@
 'use client';
 
-import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 
@@ -37,14 +36,15 @@ export function Shelf({
       <div className="flex items-center gap-[10px]">
         <Icon size={18} strokeWidth={1.5} className="shrink-0 text-red" />
         <h2 className="text-[17px] font-bold">{title}</h2>
-        <span className="text-[12px] text-text-3">{entries.length}</span>
-        <span className="flex-1" />
+        <span className="rounded-pill bg-surface-2 px-[8px] py-[2px] text-[11.5px] text-text-2">
+          {entries.length}
+        </span>
+        <span className="h-px flex-1 bg-line" />
         <Link
           href={href}
-          aria-label={`${title}: открыть в каталоге`}
-          className="text-text-2 transition-colors duration-[120ms] hover:text-text"
+          className="shrink-0 text-[12.5px] text-text-2 transition-colors duration-[120ms] hover:text-text"
         >
-          <ChevronRight size={16} strokeWidth={1.5} />
+          Все →
         </Link>
       </div>
 
