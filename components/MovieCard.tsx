@@ -520,23 +520,50 @@ function DiskField({
 }
 
 /**
- * Добавление в подборку прямо из карточки: выбрать существующую или завести
- * новую. Массового выделения в каталоге пока нет — оно отложено.
+ * Добавление в подборку прямо из карточки (правка по ручной проверке, п.2):
+ * панель теперь с видимой рамкой — раньше её фон совпадал с фоном карточки
+ * и она сливалась. Строка списка — флажок, название, число записей; клик
+ * сразу добавляет или убирает, без закрытия панели. Под кнопкой — названия
+ * списков, где фильм уже есть, пилюлями «не выбрано».
  */
 function ListPicker({ movieId }: { movieId: number }) {
   const { lists, addToList, putItems, createList } = useLists();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
+  const box = useRef<HTMLDivElement>(null);
 
   const inside = lists.filter((list) => list.items.some((item) => item.movieId === movieId));
 
-  const remove = (listId: number) => {
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointer = (event: MouseEvent) => {
+      if (!box.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const toggle = (listId: number) => {
     const list = lists.find((l) => l.id === listId);
     if (!list) return;
-    void putItems(
-      listId,
-      list.items.filter((item) => item.movieId !== movieId),
-    );
+
+    if (list.items.some((item) => item.movieId === movieId)) {
+      void putItems(
+        listId,
+        list.items.filter((item) => item.movieId !== movieId),
+      );
+    } else {
+      void addToList(listId, movieId);
+    }
   };
 
   const create = async (event: React.FormEvent) => {
@@ -546,68 +573,81 @@ function ListPicker({ movieId }: { movieId: number }) {
     const created = await createList(title.trim());
     if (created) await addToList(created.id, movieId);
     setTitle('');
-    setOpen(false);
   };
 
   return (
-    <div className="flex flex-wrap items-start gap-[6px]">
-      {inside.map((list) => (
-        <span
-          key={list.id}
-          className="inline-flex items-center gap-[6px] rounded-pill bg-surface-3 px-[15px] py-[7px] text-[12px]"
-        >
-          {list.title}
-          <button
-            type="button"
-            onClick={() => remove(list.id)}
-            aria-label={`Убрать из «${list.title}»`}
-            className="text-text-3 transition-colors duration-[120ms] hover:text-text"
+    <div ref={box} className="relative inline-flex flex-col items-start gap-[8px]">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="inline-flex items-center gap-[6px] rounded-pill bg-surface-3 px-[15px] py-[7px] text-[12px] text-text-2 transition-colors duration-[120ms] hover:text-text"
+      >
+        <Plus size={13} strokeWidth={1.5} />В список
+      </button>
+
+      {inside.length > 0 && (
+        <div className="flex flex-wrap gap-[6px]">
+          {inside.map((list) => (
+            <span
+              key={list.id}
+              className="rounded-pill border border-line-strong px-[15px] py-[7px] text-[12px] text-text"
+            >
+              {list.title}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {open && (
+        <div className="absolute top-[calc(100%+6px)] left-0 z-10 min-w-[240px] rounded-md border border-line-strong bg-surface-2 p-[6px]">
+          {lists.length > 0 && (
+            <div className="max-h-[220px] overflow-y-auto">
+              {lists.map((list) => {
+                const on = list.items.some((item) => item.movieId === movieId);
+                return (
+                  <button
+                    key={list.id}
+                    type="button"
+                    onClick={() => toggle(list.id)}
+                    className="flex w-full items-center gap-[8px] rounded-sm px-[8px] py-[7px] text-left text-[12px] transition-colors duration-[120ms] hover:bg-surface-3"
+                  >
+                    <span
+                      className={`flex h-[16px] w-[16px] shrink-0 items-center justify-center rounded-xs border ${
+                        on ? 'border-red bg-red' : 'border-line-strong'
+                      }`}
+                    >
+                      {on && <Check size={11} strokeWidth={2} className="text-white" />}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-text">{list.title}</span>
+                    <span className="shrink-0 text-text-3">{list.items.length}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <form
+            onSubmit={create}
+            className={`flex items-center gap-[6px] ${
+              lists.length > 0 ? 'mt-[6px] border-t border-line-strong pt-[6px]' : ''
+            }`}
           >
-            <X size={13} strokeWidth={1.5} />
-          </button>
-        </span>
-      ))}
-
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          className="inline-flex items-center gap-[6px] rounded-pill bg-surface-3 px-[15px] py-[7px] text-[12px] text-text-2 transition-colors duration-[120ms] hover:text-text"
-        >
-          <Plus size={13} strokeWidth={1.5} />В список
-        </button>
-
-        {open && (
-          <div className="absolute top-[calc(100%+6px)] left-0 z-10 max-h-[260px] min-w-[220px] overflow-y-auto rounded-lg border border-line bg-surface p-[6px]">
-            {lists.map((list) => {
-              const on = list.items.some((item) => item.movieId === movieId);
-              return (
-                <button
-                  key={list.id}
-                  type="button"
-                  onClick={() => (on ? remove(list.id) : addToList(list.id, movieId))}
-                  className="flex w-full items-center gap-2 rounded-sm px-[10px] py-[6px] text-left text-[12px] transition-colors duration-[120ms] hover:bg-surface-2"
-                >
-                  <span className="w-[14px] shrink-0 text-red">
-                    {on && <Check size={14} strokeWidth={1.5} />}
-                  </span>
-                  <span className={on ? 'text-text' : 'text-text-2'}>{list.title}</span>
-                </button>
-              );
-            })}
-
-            <form onSubmit={create} className="mt-1 border-t border-line pt-[6px]">
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="новая подборка"
-                className="field w-full text-[12px]"
-              />
-            </form>
-          </div>
-        )}
-      </div>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Новый список"
+              className="field min-w-0 flex-1 text-[12px]"
+            />
+            <button
+              type="submit"
+              className="shrink-0 rounded-pill bg-red px-[12px] py-[6px] text-[12px] font-medium text-white transition-colors duration-[120ms] hover:bg-red-hover"
+            >
+              Создать
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

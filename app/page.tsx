@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import { Carousel } from '@/components/Carousel';
 import { GenreDoor } from '@/components/GenreDoor';
+import { ListCover } from '@/components/ListCover';
 import { Shelf } from '@/components/Shelf';
 import { useCollection } from '@/components/CollectionProvider';
 import { useLists } from '@/components/ListsProvider';
@@ -72,7 +73,10 @@ export default function HomePage() {
  */
 function MyLists() {
   const { lists, views } = useLists();
+  const { entries } = useCollection();
   if (lists.length === 0 && views.length === 0) return null;
+
+  const byId = new Map(entries.map((entry) => [entry.id, entry]));
 
   return (
     <section className="mt-[26px]">
@@ -90,31 +94,40 @@ function MyLists() {
         </Link>
       </div>
 
-      <div className="mt-[13px] grid grid-cols-1 gap-[var(--gap)] min-[600px]:grid-cols-2 min-[900px]:grid-cols-3">
-        {lists.map((list) => (
-          <Link
-            key={`list-${list.id}`}
-            href={`/spiski/${list.id}`}
-            className="rounded-sm bg-surface px-[13px] py-[11px] transition-colors duration-[120ms] hover:bg-surface-2"
-          >
-            <span className="block truncate text-[13px] font-medium">{list.title}</span>
-            <span className="mt-1 block text-[11.5px] text-text-3">
-              {list.items.length} {entriesWord(list.items.length)} · вручную
-            </span>
-          </Link>
-        ))}
+      {lists.length > 0 && (
+        <div className="mt-[13px] flex gap-[var(--gap)] overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {lists.map((list) => (
+            <Link key={list.id} href={`/spiski/${list.id}`} className="w-[240px] shrink-0">
+              <div className="transition-transform duration-150 ease-out hover:scale-[1.03]">
+                <ListCover list={list} byId={byId} />
+              </div>
+              <h3 className="mt-[9px] line-clamp-1 text-[15px] font-bold">{list.title}</h3>
+              <p className="mt-1 text-[12px] text-text-3">
+                {list.items.length} {entriesWord(list.items.length)} · вручную
+              </p>
+            </Link>
+          ))}
+        </div>
+      )}
 
-        {views.map((view) => (
-          <Link
-            key={`view-${view.id}`}
-            href={`/vse-kino?${view.query}`}
-            className="rounded-sm bg-surface px-[13px] py-[11px] transition-colors duration-[120ms] hover:bg-surface-2"
-          >
-            <span className="block truncate text-[13px] font-medium">{view.title}</span>
-            <span className="mt-1 block text-[11.5px] text-text-3">обновляется само</span>
-          </Link>
-        ))}
-      </div>
+      {views.length > 0 && (
+        <div
+          className={`grid grid-cols-1 gap-[var(--gap)] min-[600px]:grid-cols-2 min-[900px]:grid-cols-3 ${
+            lists.length > 0 ? 'mt-3' : 'mt-[13px]'
+          }`}
+        >
+          {views.map((view) => (
+            <Link
+              key={`view-${view.id}`}
+              href={`/vse-kino?${view.query}`}
+              className="rounded-sm bg-surface px-[13px] py-[11px] transition-colors duration-[120ms] hover:bg-surface-2"
+            >
+              <span className="block truncate text-[13px] font-medium">{view.title}</span>
+              <span className="mt-1 block text-[11.5px] text-text-3">обновляется само</span>
+            </Link>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

@@ -63,7 +63,7 @@ export function PickOne<T extends string>({
       </button>
 
       {open && (
-        <div className="absolute top-[calc(100%+6px)] right-0 z-20 min-w-[190px] rounded-lg border border-line bg-surface p-[6px]">
+        <div className="absolute top-[calc(100%+6px)] right-0 z-20 min-w-[190px] rounded-md border border-line-strong bg-surface-2 p-[6px]">
           {options.map((option) => (
             <button
               key={option.value}
@@ -72,7 +72,7 @@ export function PickOne<T extends string>({
                 onChange(option.value);
                 setOpen(false);
               }}
-              className={`block w-full rounded-sm px-[10px] py-[6px] text-left text-[12px] transition-colors duration-[120ms] hover:bg-surface-2 ${
+              className={`block w-full rounded-sm px-[10px] py-[6px] text-left text-[12px] transition-colors duration-[120ms] hover:bg-surface-3 ${
                 option.value === value ? 'text-text' : 'text-text-2'
               }`}
             >

@@ -75,12 +75,12 @@ export function FilterSelect({
       </button>
 
       {open && (
-        <div className="absolute top-[calc(100%+6px)] left-0 z-20 max-h-[280px] min-w-[210px] overflow-y-auto rounded-lg border border-line bg-surface p-[6px]">
+        <div className="absolute top-[calc(100%+6px)] left-0 z-20 max-h-[280px] min-w-[210px] overflow-y-auto rounded-md border border-line-strong bg-surface-2 p-[6px]">
           {active && (
             <button
               type="button"
               onClick={() => onChange([])}
-              className="mb-1 w-full rounded-sm px-[10px] py-[6px] text-left text-[12px] text-red transition-colors duration-[120ms] hover:bg-surface-2"
+              className="mb-1 w-full rounded-sm px-[10px] py-[6px] text-left text-[12px] text-red transition-colors duration-[120ms] hover:bg-surface-3"
             >
               Снять выбор
             </button>
@@ -93,7 +93,7 @@ export function FilterSelect({
                 key={option.value}
                 type="button"
                 onClick={() => toggle(option.value)}
-                className="flex w-full items-center gap-2 rounded-sm px-[10px] py-[6px] text-left text-[12px] transition-colors duration-[120ms] hover:bg-surface-2"
+                className="flex w-full items-center gap-2 rounded-sm px-[10px] py-[6px] text-left text-[12px] transition-colors duration-[120ms] hover:bg-surface-3"
               >
                 <span className="w-[14px] shrink-0 text-red">
                   {on && <Check size={14} strokeWidth={1.5} />}

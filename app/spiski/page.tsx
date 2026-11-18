@@ -1,10 +1,11 @@
 'use client';
 
-import { Image as ImageIcon, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
 import { useCollection } from '@/components/CollectionProvider';
+import { ListCover } from '@/components/ListCover';
 import { useLists, type MovieList } from '@/components/ListsProvider';
 import { entriesWord } from '@/lib/collection';
 import type { Entry } from '@/lib/collection';
@@ -93,7 +94,7 @@ export default function ListsPage() {
       )}
 
       {lists.length > 0 && (
-        <div className="mt-5 grid grid-cols-2 gap-[var(--gap)] min-[600px]:grid-cols-3 min-[900px]:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-[var(--gap)] min-[900px]:grid-cols-3 min-[1280px]:grid-cols-4">
           {lists.map((list) => (
             <ListCard key={list.id} list={list} byId={byId} />
           ))}
@@ -137,25 +138,14 @@ export default function ListsPage() {
 }
 
 function ListCard({ list, byId }: { list: MovieList; byId: Map<number, Entry> }) {
-  const cover =
-    (list.coverMovieId ? byId.get(list.coverMovieId) : undefined) ??
-    byId.get(list.items[0]?.movieId);
-
   return (
     <Link href={`/spiski/${list.id}`} className="block">
-      <div className="aspect-[2/3] overflow-hidden rounded-xs bg-surface-2 transition-transform duration-150 ease-out hover:scale-[1.03]">
-        {cover?.posterUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover.posterUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
-        ) : (
-          <span className="flex h-full w-full items-center justify-center text-icon-dim">
-            <ImageIcon size={19} strokeWidth={1.5} />
-          </span>
-        )}
+      <div className="transition-transform duration-150 ease-out hover:scale-[1.03]">
+        <ListCover list={list} byId={byId} />
       </div>
 
-      <h3 className="mt-[9px] line-clamp-2 text-[12.5px] font-medium">{list.title}</h3>
-      <p className="mt-1 text-[11.5px] text-text-3">
+      <h3 className="mt-[9px] line-clamp-1 text-[15px] font-bold">{list.title}</h3>
+      <p className="mt-1 text-[12px] text-text-3">
         {list.items.length} {entriesWord(list.items.length)} · вручную
       </p>
     </Link>
