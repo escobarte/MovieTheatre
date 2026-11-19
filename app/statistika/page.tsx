@@ -1,6 +1,7 @@
 'use client';
 
-import { Star } from 'lucide-react';
+import { Film, Library, Star, Tv } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo } from 'react';
 
@@ -22,8 +23,9 @@ import {
 
 /**
  * Статистика (5.10). Всё считается в памяти по уже загруженной коллекции.
- * Графики — полосы на ступенях --surface: по 6.4 красный отдан действиям,
- * а жёлтый только звезде рейтинга, поэтому данные показываются нейтрально.
+ * Разделы — в боксах --panel-sky, графики и иконки — вторичной палитрой
+ * (--sky/--violet/--st-watching): по 6.4 красный отдан действиям, а жёлтый
+ * только звезде рейтинга.
  */
 export default function StatsPage() {
   const { entries, loading, error } = useCollection();
@@ -62,37 +64,43 @@ export default function StatsPage() {
     <div className="pb-16">
       <h1 className="text-[22px] font-bold">Статистика</h1>
 
-      <div className="mt-5 grid grid-cols-1 gap-[var(--gap)] min-[600px]:grid-cols-3">
-        <Tile title="Всего" count={sum.all.count} hours={sum.all.hours} />
-        <Tile
-          title="Фильмы"
-          count={sum.movies.count}
-          hours={sum.movies.hours}
-          href={catalogHref({ [QP.type]: 'movie' })}
-        />
-        <Tile
-          title="Сериалы"
-          count={sum.series.count}
-          hours={sum.series.hours}
-          href={catalogHref({ [QP.type]: 'tv' })}
-        />
-      </div>
+      <Panel>
+        <div className="grid grid-cols-1 gap-[var(--gap)] min-[600px]:grid-cols-3">
+          <Tile icon={Library} iconColor="var(--sky)" title="Всего" count={sum.all.count} hours={sum.all.hours} />
+          <Tile
+            icon={Film}
+            iconColor="var(--violet)"
+            title="Фильмы"
+            count={sum.movies.count}
+            hours={sum.movies.hours}
+            href={catalogHref({ [QP.type]: 'movie' })}
+          />
+          <Tile
+            icon={Tv}
+            iconColor="var(--st-watching)"
+            title="Сериалы"
+            count={sum.series.count}
+            hours={sum.series.hours}
+            href={catalogHref({ [QP.type]: 'tv' })}
+          />
+        </div>
 
-      {(sum.withoutRuntime > 0 || sum.seriesWithoutEpisodes > 0) && (
-        <p className="mt-2 text-[11.5px] text-text-3">
-          Часы неполные:{' '}
-          {[
-            sum.withoutRuntime > 0 &&
-              `${sum.withoutRuntime} без хронометража`,
-            sum.seriesWithoutEpisodes > 0 &&
-              `${sum.seriesWithoutEpisodes} ${plural(sum.seriesWithoutEpisodes, 'сериал', 'сериала', 'сериалов')} без числа серий`,
-          ]
-            .filter(Boolean)
-            .join(', ')}
-        </p>
-      )}
+        {(sum.withoutRuntime > 0 || sum.seriesWithoutEpisodes > 0) && (
+          <p className="mt-2 text-[11.5px] text-text-3">
+            Часы неполные:{' '}
+            {[
+              sum.withoutRuntime > 0 &&
+                `${sum.withoutRuntime} без хронометража`,
+              sum.seriesWithoutEpisodes > 0 &&
+                `${sum.seriesWithoutEpisodes} ${plural(sum.seriesWithoutEpisodes, 'сериал', 'сериала', 'сериалов')} без числа серий`,
+            ]
+              .filter(Boolean)
+              .join(', ')}
+          </p>
+        )}
+      </Panel>
 
-      <Section title="Мои оценки">
+      <Panel title="Мои оценки">
         {rated === 0 ? (
           <p className="text-text-3">Ни одной оценки пока не поставлено.</p>
         ) : (
@@ -104,10 +112,13 @@ export default function StatsPage() {
                   href={catalogHref({ [QP.min]: String(bar.value) })}
                   className="flex flex-1 flex-col items-center gap-[6px] rounded-sm py-1 transition-colors duration-[120ms] hover:bg-surface-2"
                 >
-                  <span className="text-[11px] text-text-3">{bar.count || ''}</span>
+                  <span className="text-[11px] text-text-2">{bar.count || ''}</span>
                   <div
-                    className="w-full rounded-xs bg-text-2"
-                    style={{ height: `${scale(bar.count, ratings.map((r) => r.count))}px` }}
+                    className="w-full rounded-xs"
+                    style={{
+                      height: `${scale(bar.count, ratings.map((r) => r.count))}px`,
+                      background: bar.count > 0 ? 'var(--sky)' : 'var(--surface-3)',
+                    }}
                   />
                   <span className="text-[11.5px] text-text-3">{bar.value}</span>
                 </Link>
@@ -118,9 +129,9 @@ export default function StatsPage() {
             </p>
           </>
         )}
-      </Section>
+      </Panel>
 
-      <Section title="По десятилетиям">
+      <Panel title="По десятилетиям">
         <div className="flex flex-col gap-[6px]">
           {decades.map((row) => (
             <Bar
@@ -132,15 +143,17 @@ export default function StatsPage() {
             />
           ))}
         </div>
-      </Section>
+      </Panel>
 
-      <div className="mt-5 grid grid-cols-1 gap-[var(--gap)] min-[900px]:grid-cols-3">
-        <Top title="Режиссёры" rows={stats.directors} toHref={(name) => catalogHref({ [QP.director]: name })} />
-        <Top title="Жанры" rows={stats.genres} toHref={(name) => catalogHref({ [QP.genre]: name })} />
-        <Top title="Страны" rows={stats.countries} toHref={(name) => catalogHref({ [QP.country]: name })} />
-      </div>
+      <Panel>
+        <div className="grid grid-cols-1 gap-[var(--gap)] min-[900px]:grid-cols-3">
+          <Top title="Режиссёры" rows={stats.directors} toHref={(name) => catalogHref({ [QP.director]: name })} />
+          <Top title="Жанры" rows={stats.genres} toHref={(name) => catalogHref({ [QP.genre]: name })} />
+          <Top title="Страны" rows={stats.countries} toHref={(name) => catalogHref({ [QP.country]: name })} />
+        </div>
+      </Panel>
 
-      <Section title="Скачано">
+      <Panel title="Сколько скачано и на каких дисках">
         <p className="text-text-2">
           {downloaded.length} {entriesWord(downloaded.length)} лежит на диске
         </p>
@@ -166,9 +179,9 @@ export default function StatsPage() {
             записей не привязаны к диску
           </p>
         )}
-      </Section>
+      </Panel>
 
-      <Section title="Расхождение с Кинопоиском">
+      <Panel title="Расхождение с Кинопоиском">
         {gap.compared === 0 ? (
           <p className="text-text-3">
             Нужны свои оценки рядом с оценками КП — пока сравнивать нечего.
@@ -180,11 +193,11 @@ export default function StatsPage() {
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-[var(--gap)] min-[600px]:grid-cols-2">
-            <DiffList title="Я щедрее" rows={gap.higher} />
-            <DiffList title="Я строже" rows={gap.lower} />
+            <DiffList title="Я щедрее" rows={gap.higher} tone="watched" />
+            <DiffList title="Я строже" rows={gap.lower} tone="orange" />
           </div>
         )}
-      </Section>
+      </Panel>
     </div>
   );
 }
@@ -195,15 +208,32 @@ const BAR_MAX = 90;
 
 function scale(value: number, all: number[]): number {
   const max = Math.max(...all, 1);
-  return value === 0 ? 2 : Math.max(Math.round((value / max) * BAR_MAX), 3);
+  return value === 0 ? 3 : Math.max(Math.round((value / max) * BAR_MAX), 3);
+}
+
+/** Бокс раздела (п.3 правок «больше цвета») — тот же вид, что у полки Главной. */
+function Panel({ title, children }: { title?: string; children: React.ReactNode }) {
+  return (
+    <section
+      className="mt-[20px] rounded-lg border p-[20px]"
+      style={{ background: 'var(--panel-sky)', borderColor: 'var(--panel-sky-line)' }}
+    >
+      {title && <h2 className="text-[17px] font-bold">{title}</h2>}
+      <div className={title ? 'mt-4' : undefined}>{children}</div>
+    </section>
+  );
 }
 
 function Tile({
+  icon: Icon,
+  iconColor,
   title,
   count,
   hours,
   href,
 }: {
+  icon: LucideIcon;
+  iconColor: string;
   title: string;
   count: number;
   hours: number;
@@ -211,7 +241,10 @@ function Tile({
 }) {
   const body = (
     <>
-      <p className="text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">{title}</p>
+      <p className="flex items-center gap-[6px] text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">
+        <Icon size={16} strokeWidth={1.5} style={{ color: iconColor }} />
+        {title}
+      </p>
       <p className="mt-2 text-[22px] font-bold">{count}</p>
       <p className="mt-1 text-[11.5px] text-text-3">
         {hours} {plural(hours, 'час', 'часа', 'часов')}
@@ -219,24 +252,15 @@ function Tile({
     </>
   );
 
-  if (!href) return <div className="rounded-sm bg-surface p-[13px]">{body}</div>;
+  if (!href) return <div className="rounded-sm border border-line bg-surface p-[13px]">{body}</div>;
 
   return (
     <Link
       href={href}
-      className="block rounded-sm bg-surface p-[13px] transition-colors duration-[120ms] hover:bg-surface-2"
+      className="block rounded-sm border border-line bg-surface p-[13px] transition-colors duration-[120ms] hover:bg-surface-2"
     >
       {body}
     </Link>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-8 border-t border-line pt-[18px]">
-      <h2 className="text-[17px] font-bold">{title}</h2>
-      <div className="mt-4">{children}</div>
-    </section>
   );
 }
 
@@ -258,7 +282,7 @@ function Bar({
       <span className="w-[110px] shrink-0 truncate text-[12px] text-text-2">{label}</span>
       <span className="h-[6px] flex-1 overflow-hidden rounded-pill bg-surface-3">
         <span
-          className="block h-full rounded-pill bg-text-2"
+          className="block h-full rounded-pill bg-sky"
           style={{ width: `${(value / Math.max(max, 1)) * 100}%` }}
         />
       </span>
@@ -289,11 +313,12 @@ function Top({
   toHref: (name: string) => string;
 }) {
   if (rows.length === 0) return null;
+  const max = Math.max(...rows.map(([, count]) => count), 1);
 
   return (
     <div className="rounded-sm bg-surface p-[13px]">
       <h3 className="text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">{title}</h3>
-      <ol className="mt-3 flex flex-col gap-[6px]">
+      <ol className="mt-3 flex flex-col gap-[8px]">
         {rows.map(([name, count]) => (
           <li key={name}>
             <Link
@@ -303,6 +328,12 @@ function Top({
               <span className="min-w-0 flex-1 truncate text-[12.5px]">{capitalize(name)}</span>
               <span className="text-[11.5px] text-text-3">{count}</span>
             </Link>
+            <span className="mt-1 block h-[4px] overflow-hidden rounded-pill bg-surface-3">
+              <span
+                className="block h-full rounded-pill bg-sky"
+                style={{ width: `${(count / max) * 100}%` }}
+              />
+            </span>
           </li>
         ))}
       </ol>
@@ -310,8 +341,17 @@ function Top({
   );
 }
 
-function DiffList({ title, rows }: { title: string; rows: Divergence[] }) {
+function DiffList({
+  title,
+  rows,
+  tone,
+}: {
+  title: string;
+  rows: Divergence[];
+  tone: 'watched' | 'orange';
+}) {
   const { openCard } = useCard();
+  const dotColor = tone === 'watched' ? 'var(--st-watched)' : 'var(--orange)';
 
   return (
     <div className="rounded-sm bg-surface p-[13px]">
@@ -328,9 +368,10 @@ function DiffList({ title, rows }: { title: string; rows: Divergence[] }) {
                 onClick={() => openCard(entry.id)}
                 className="flex w-full items-baseline gap-2 rounded-sm text-left transition-colors duration-[120ms] hover:bg-surface-2"
               >
+                <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: dotColor }} />
                 <span className="min-w-0 flex-1 truncate text-[12.5px]">{entry.title}</span>
                 <Score entry={entry} />
-                <span className="w-[38px] shrink-0 text-right text-[11.5px] text-text-3">
+                <span className="w-[38px] shrink-0 text-right text-[11.5px]" style={{ color: dotColor }}>
                   {diff > 0 ? `+${diff}` : diff}
                 </span>
               </button>

@@ -22,12 +22,15 @@ import { Poster } from './Poster';
  */
 export function Shelf({
   icon: Icon,
+  iconColor = 'var(--red)',
   title,
   entries,
   href,
   badge,
 }: {
   icon: LucideIcon;
+  /** Цвет иконки заголовка (п.1 правок «больше цвета») — по умолчанию красный. */
+  iconColor?: string;
   title: string;
   entries: Entry[];
   href: string;
@@ -41,7 +44,7 @@ export function Shelf({
       style={{ background: 'var(--panel-sky)', borderColor: 'var(--panel-sky-line)' }}
     >
       <div className="flex items-center gap-[10px]">
-        <Icon size={18} strokeWidth={1.5} className="shrink-0 text-red" />
+        <Icon size={18} strokeWidth={1.5} className="shrink-0" style={{ color: iconColor }} />
         <h2 className="text-[17px] font-bold">{title}</h2>
         <span className="rounded-pill bg-surface-2 px-[8px] py-[2px] text-[11.5px] text-text-2">
           {entries.length}

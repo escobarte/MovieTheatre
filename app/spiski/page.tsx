@@ -1,6 +1,7 @@
 'use client';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { List, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -95,20 +96,25 @@ export default function ListsPage() {
       )}
 
       {lists.length > 0 && (
-        <div className="mt-5 grid grid-cols-2 gap-[var(--gap)] min-[900px]:grid-cols-3 min-[1280px]:grid-cols-4">
-          {lists.map((list) => (
-            <ListCard key={list.id} list={list} byId={byId} />
-          ))}
-        </div>
+        <Panel>
+          <PanelHeader icon={List} iconColor="var(--orange)" title="Списки" count={lists.length} />
+          <div className="mt-[13px] grid grid-cols-2 gap-[var(--gap)] min-[900px]:grid-cols-3 min-[1280px]:grid-cols-4">
+            {lists.map((list) => (
+              <ListCard key={list.id} list={list} byId={byId} />
+            ))}
+          </div>
+        </Panel>
       )}
 
       {views.length > 0 && (
-        <section className="mt-8 border-t border-line pt-[18px]">
-          <h2 className="text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">
-            Сохранённые фильтры
-          </h2>
-
-          <div className="mt-3 grid grid-cols-2 gap-[var(--gap)] min-[900px]:grid-cols-3 min-[1280px]:grid-cols-4">
+        <Panel>
+          <PanelHeader
+            icon={RefreshCw}
+            iconColor="var(--sky)"
+            title="Сохранённые фильтры"
+            count={views.length}
+          />
+          <div className="mt-[13px] grid grid-cols-2 gap-[var(--gap)] min-[900px]:grid-cols-3 min-[1280px]:grid-cols-4">
             {views.map((view) => (
               <ViewCard
                 key={view.id}
@@ -118,8 +124,42 @@ export default function ListsPage() {
               />
             ))}
           </div>
-        </section>
+        </Panel>
       )}
+    </div>
+  );
+}
+
+/** Бокс группы (п.2 правок «больше цвета») — тот же вид, что у полки Главной. */
+function Panel({ children }: { children: React.ReactNode }) {
+  return (
+    <section
+      className="mt-[20px] rounded-lg border pt-[16px] pr-[20px] pb-[20px] pl-[20px]"
+      style={{ background: 'var(--panel-sky)', borderColor: 'var(--panel-sky-line)' }}
+    >
+      {children}
+    </section>
+  );
+}
+
+function PanelHeader({
+  icon: Icon,
+  iconColor,
+  title,
+  count,
+}: {
+  icon: LucideIcon;
+  iconColor: string;
+  title: string;
+  count: number;
+}) {
+  return (
+    <div className="flex items-center gap-[10px]">
+      <Icon size={18} strokeWidth={1.5} className="shrink-0" style={{ color: iconColor }} />
+      <h2 className="text-[17px] font-bold">{title}</h2>
+      <span className="rounded-pill bg-surface-2 px-[8px] py-[2px] text-[11.5px] text-text-2">
+        {count}
+      </span>
     </div>
   );
 }

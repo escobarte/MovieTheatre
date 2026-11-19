@@ -1,6 +1,6 @@
 'use client';
 
-import { HardDrive, Plus } from 'lucide-react';
+import { AlertCircle, HardDrive, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -8,9 +8,9 @@ import { useDisks, type Disk } from '@/components/DisksProvider';
 import { formatGb, plural } from '@/lib/collection';
 
 /**
- * Диски: метка, полоса заполнения, остаток и число фильмов. Полоса
- * нейтрального цвета — по 6.4 красный отдан действиям, а жёлтый оценке,
- * поэтому заполнение показывается ступенями --surface и текстом.
+ * Диски: метка, полоса заполнения, остаток и число фильмов. Карточка —
+ * в боксе Главной (--panel-sky). Полоса --sky, при заполнении ≥ 90% —
+ * --orange; красный не используется, он отдан действиям (6.4).
  */
 export default function DisksPage() {
   const { disks, loading, error, createDisk } = useDisks();
@@ -114,7 +114,7 @@ export default function DisksPage() {
       )}
 
       {disks.length > 0 && (
-        <div className="mt-5 flex flex-col gap-[var(--gap)]">
+        <div className="mt-5 flex flex-col gap-[20px]">
           {disks.map((disk) => (
             <DiskRow key={disk.id} disk={disk} />
           ))}
@@ -126,15 +126,17 @@ export default function DisksPage() {
 
 function DiskRow({ disk }: { disk: Disk }) {
   const share = disk.sizeGb > 0 ? Math.min(disk.usedGb / disk.sizeGb, 1) : 0;
+  const fill = share >= 0.9 ? 'var(--orange)' : 'var(--sky)';
 
   return (
     <Link
       href={`/diski/${disk.id}`}
-      className="block rounded-sm bg-surface p-[13px] transition-colors duration-[120ms] hover:bg-surface-2"
+      className="block rounded-lg border p-[20px]"
+      style={{ background: 'var(--panel-sky)', borderColor: 'var(--panel-sky-line)' }}
     >
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="flex items-center gap-2 text-[15px] font-bold">
-          <HardDrive size={16} strokeWidth={1.5} className="text-text-2" />
+          <HardDrive size={16} strokeWidth={1.5} style={{ color: 'var(--sky)' }} />
           Диск {disk.label}
         </span>
         <span className="text-[11.5px] text-text-3">
@@ -147,13 +149,14 @@ function DiskRow({ disk }: { disk: Disk }) {
       </div>
 
       <div className="mt-[9px] h-[6px] overflow-hidden rounded-pill bg-surface-3">
-        <div className="h-full rounded-pill bg-text-2" style={{ width: `${share * 100}%` }} />
+        <div className="h-full rounded-pill" style={{ width: `${share * 100}%`, background: fill }} />
       </div>
 
       <div className="mt-[6px] flex flex-wrap items-baseline gap-x-3 text-[11.5px]">
-        <span className="text-text-2">свободно {formatGb(disk.freeGb)} ГБ</span>
+        <span className="font-medium text-text">свободно {formatGb(disk.freeGb)} ГБ</span>
         {disk.moviesWithoutSize > 0 && (
-          <span className="text-text-3">
+          <span className="flex items-center gap-[4px] text-text-3">
+            <AlertCircle size={13} strokeWidth={1.5} style={{ color: 'var(--orange)' }} />
             подсчёт неполный: {disk.moviesWithoutSize}{' '}
             {plural(disk.moviesWithoutSize, 'фильм', 'фильма', 'фильмов')} без веса
           </span>

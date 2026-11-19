@@ -39,6 +39,7 @@ export default function HomePage() {
 
       <Shelf
         icon={PlayCircle}
+        iconColor="var(--st-watching)"
         title="Смотрю сейчас"
         entries={watching}
         href={catalogHref({ [QP.type]: 'tv', [QP.status]: 'watching' })}
@@ -51,6 +52,7 @@ export default function HomePage() {
 
       <Shelf
         icon={RotateCw}
+        iconColor="var(--violet)"
         title="Хочу пересмотреть"
         entries={rewatch}
         href={catalogHref({ [QP.rewatch]: '1' })}
@@ -58,6 +60,7 @@ export default function HomePage() {
 
       <Shelf
         icon={HardDriveDownload}
+        iconColor="var(--red)"
         title="Буду смотреть, уже скачано"
         entries={readyToWatch}
         href={catalogHref({ [QP.status]: 'planned', [QP.file]: 'have' })}
@@ -85,7 +88,7 @@ function MyLists() {
       style={{ background: 'var(--panel-sky)', borderColor: 'var(--panel-sky-line)' }}
     >
       <div className="flex items-center gap-[10px]">
-        <List size={18} strokeWidth={1.5} className="shrink-0 text-red" />
+        <List size={18} strokeWidth={1.5} className="shrink-0 text-orange" />
         <h2 className="text-[17px] font-bold">Мои списки</h2>
         <span className="rounded-pill bg-surface-2 px-[8px] py-[2px] text-[11.5px] text-text-2">
           {lists.length + views.length}

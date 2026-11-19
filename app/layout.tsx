@@ -4,6 +4,7 @@ import { Onest } from 'next/font/google';
 import { CardProvider } from '@/components/CardProvider';
 import { CollectionProvider } from '@/components/CollectionProvider';
 import { DisksProvider } from '@/components/DisksProvider';
+import { FocusRing } from '@/components/FocusRing';
 import { Header } from '@/components/Header';
 import { ListsProvider } from '@/components/ListsProvider';
 import { SearchProvider } from '@/components/SearchProvider';
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ru" className={onest.variable}>
       <body>
+        <FocusRing />
         <CollectionProvider>
           <ListsProvider>
             <DisksProvider>

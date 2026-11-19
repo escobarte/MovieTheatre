@@ -33,6 +33,13 @@
   --panel-sky:      #141B25;
   --panel-sky-line: rgba(125, 196, 250, .22);
 
+  /* Вторичная палитра: только иконки, столбики и полосы графиков, полосы
+     заполнения и точки-метки. Не для кнопок, текста абзацев/заголовков и
+     фона крупных блоков — акцентов по-прежнему два, красный и жёлтый. */
+  --sky:    #7DC4FA;
+  --violet: #A78BFA;
+  --orange: #F2994A;
+
   --r-pill: 999px;
   --r-lg:    12px;   /* оверлей, крупные блоки */
   --r-md:    10px;   /* карточка карусели, поле поиска */
@@ -66,6 +73,10 @@
   --color-st-planned:  var(--st-planned);
   --color-st-none:     var(--st-none);
 
+  --color-sky:    var(--sky);
+  --color-violet: var(--violet);
+  --color-orange: var(--orange);
+
   --radius-pill: var(--r-pill);
   --radius-lg:   var(--r-lg);
   --radius-md:   var(--r-md);
@@ -93,8 +104,17 @@ body {
   overflow-x: hidden;
 }
 
-/* 6.6. Фокус с клавиатуры — outline убирать запрещено */
-:focus-visible {
+/* 6.6. Фокус с клавиатуры — outline убирать запрещено, но только по клику
+   мышью/касанию. Модальность ввода трекает components/FocusRing: клиентская
+   навигация Next.js (<Link>) ставит фокус на <a> асинхронно после клика,
+   из-за чего нативная эвристика :focus-visible у ссылок иногда срабатывает
+   как от клавиатуры и красная рамка остаётся после обычного клика —
+   поэтому вместо неё используется явный атрибут на <html>. */
+:focus {
+  outline: none;
+}
+
+:root[data-input='keyboard'] :focus {
   outline: 2px solid var(--red);
   outline-offset: 2px;
 }
