@@ -1,21 +1,9 @@
 'use client';
 
-import {
-  ChartColumn,
-  HardDrive,
-  House,
-  LayoutGrid,
-  List,
-  LogOut,
-  Menu,
-  Plus,
-  Search,
-  X,
-} from 'lucide-react';
+import { ChartColumn, HardDrive, House, LayoutGrid, List, LogOut, Plus, Search } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
 
 import { logout } from '@/app/actions';
 
@@ -29,46 +17,25 @@ const NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/diski', label: 'Диски', icon: HardDrive },
 ];
 
-/** ownerEmail есть только при настоящем входе — на preview и в dev выхода нет. */
-export function Header({ ownerEmail }: { ownerEmail: string | null }) {
+function useIsActive() {
   const pathname = usePathname();
-  const [menuOpen, setMenuOpen] = useState(false);
+  return (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
+}
+
+/**
+ * Шапка. ≥600px — одна строка: логотип, ссылки, поиск, «Добавить», выход.
+ * <600px — логотип, поиск и «Добавить» первой строкой, ряд из пяти разделов
+ * всегда виден второй (6.7); выход на телефоне — внизу страницы, MobileSignOut.
+ * ownerEmail есть только при настоящем входе — на preview и в dev выхода нет.
+ */
+export function Header({ ownerEmail }: { ownerEmail: string | null }) {
+  const isActive = useIsActive();
   const { openSearch } = useSearch();
-
-  const menuPanel = useRef<HTMLDivElement>(null);
-  const menuButton = useRef<HTMLButtonElement>(null);
-
-  // Меню на телефоне закрывается по Esc и по касанию вне панели. Кнопка ☰
-  // считается «внутри»: иначе касание по ней закрыло бы меню и тут же открыло.
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    const onPointer = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (menuPanel.current?.contains(target) || menuButton.current?.contains(target)) return;
-      setMenuOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      setMenuOpen(false);
-      menuButton.current?.focus();
-    };
-
-    document.addEventListener('pointerdown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('pointerdown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [menuOpen]);
-
-  const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
   const navLink = (href: string, label: string) => (
     <Link
       key={href}
       href={href}
-      onClick={() => setMenuOpen(false)}
       aria-current={isActive(href) ? 'page' : undefined}
       // 6.4 относит активный пункт навигации к красному. В макете он белый —
       // при расхождении верен текст ТЗ.
@@ -83,10 +50,21 @@ export function Header({ ownerEmail }: { ownerEmail: string | null }) {
   );
 
   return (
-    <header className="flex flex-col gap-3 py-[18px] min-[600px]:flex-row min-[600px]:flex-wrap min-[600px]:items-center min-[600px]:gap-6">
-      <Link href="/" className="text-[15px] font-bold tracking-[.1em] whitespace-nowrap">
-        MOVIE<span className="text-red">_</span>THEATRE
-      </Link>
+    <header className="flex flex-col pt-[18px] pb-[12px] min-[600px]:flex-row min-[600px]:flex-wrap min-[600px]:items-center min-[600px]:gap-6 min-[600px]:py-[18px]">
+      {/* <600px — первая строка; на ПК обёртка исчезает (contents), логотип — обычный пункт строки. */}
+      <div className="flex items-center justify-between gap-2 min-[600px]:contents">
+        <Link href="/" className="text-[15px] font-bold tracking-[.1em] whitespace-nowrap">
+          MOVIE<span className="text-red">_</span>THEATRE
+        </Link>
+
+        <div className="flex shrink-0 items-center gap-[4px] min-[600px]:hidden">
+          <SearchButton
+            onClick={() => openSearch('search')}
+            className="flex h-[44px] w-[44px] items-center justify-center"
+          />
+          <AddButton onClick={() => openSearch('add')} />
+        </div>
+      </div>
 
       <nav className="hidden items-center gap-6 min-[600px]:flex">
         {NAV.map((item) => navLink(item.href, item.label))}
@@ -112,87 +90,40 @@ export function Header({ ownerEmail }: { ownerEmail: string | null }) {
         )}
       </div>
 
-      {/* <600px: вторая строка — меню и поиск слева, «Добавить» справа (6.7). */}
-      <div className="flex items-center justify-between min-[600px]:hidden">
-        <div className="flex items-center gap-4">
-          <button
-            ref={menuButton}
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-expanded={menuOpen}
-            aria-label={menuOpen ? 'Закрыть меню' : 'Меню'}
-            className="text-text-2 transition-colors duration-[120ms] hover:text-text"
-          >
-            {menuOpen ? <X size={18} strokeWidth={1.5} /> : <Menu size={18} strokeWidth={1.5} />}
-          </button>
-          <SearchButton onClick={() => openSearch('search')} />
-        </div>
-        <AddButton onClick={() => openSearch('add')} />
-      </div>
-
-      {menuOpen && (
-        // -2px по бокам: отступ панели от края экрана 16px, а поле страницы — 18px.
-        <div
-          ref={menuPanel}
-          className="mx-[-2px] rounded-lg border border-line bg-surface p-[10px] min-[600px]:hidden"
+      {/* <600px — вторая строка, всегда на виду. -2px по бокам: панель в 16px от края экрана. */}
+      <div className="mx-[-2px] mt-[10px] rounded-lg border border-line bg-surface p-[6px] min-[600px]:hidden">
+        {/* Не minmax(0,1fr): «Статистика» 11px ≈ 69px, а равная пятая часть на 360px
+            уже неё. Колонка не уже своей подписи, остальное делится поровну. */}
+        <nav
+          aria-label="Разделы"
+          className="grid grid-cols-[repeat(5,minmax(max-content,1fr))] gap-[4px]"
         >
-          {/* Не minmax(0,1fr): «Статистика» 11px ≈ 69px, а равная пятая часть на 360px —
-              58px, и даже 10.5px не влезает. Колонка не уже своей подписи, остальное делится поровну. */}
-          <nav
-            aria-label="Разделы"
-            className="grid grid-cols-[repeat(5,minmax(max-content,1fr))] gap-[4px]"
-          >
-            {NAV.map((item) => (
-              <MenuTile
-                key={item.href}
-                {...item}
-                active={isActive(item.href)}
-                onSelect={() => setMenuOpen(false)}
-              />
-            ))}
-          </nav>
-
-          {ownerEmail && (
-            <div className="mt-[10px] flex items-center justify-between gap-3 border-t border-line pl-[6px]">
-              <span className="text-[12px] text-text-3">Вход: владелец</span>
-              <form action={logout}>
-                <button
-                  type="submit"
-                  title={ownerEmail}
-                  className="inline-flex min-h-[44px] items-center gap-[6px] px-[6px] text-[12.5px] text-text-2 transition-colors duration-[120ms] hover:text-text"
-                >
-                  <LogOut size={15} strokeWidth={1.5} />
-                  Выйти
-                </button>
-              </form>
-            </div>
-          )}
-        </div>
-      )}
+          {NAV.map((item) => (
+            <NavTile key={item.href} {...item} active={isActive(item.href)} />
+          ))}
+        </nav>
+      </div>
     </header>
   );
 }
 
-/** Пункт мобильного меню: иконка над подписью. Активный — красная иконка на розоватом фоне. */
-function MenuTile({
+/** Пункт ряда разделов на телефоне: иконка над подписью. Активный — красная иконка на розоватом фоне. */
+function NavTile({
   href,
   label,
   icon: Icon,
   active,
-  onSelect,
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
   active: boolean;
-  onSelect: () => void;
 }) {
   return (
     <Link
       href={href}
-      onClick={onSelect}
       aria-current={active ? 'page' : undefined}
-      className={`flex h-[68px] flex-col items-center justify-center gap-[6px] rounded-md px-[4px] transition-colors duration-[120ms] ${
+      className={`flex h-[56px] flex-col items-center justify-center gap-[6px] rounded-md px-[4px] transition-colors duration-[120ms] ${
         active ? 'bg-red/14 text-text' : 'text-text-2 hover:bg-surface-2 active:bg-surface-2'
       }`}
     >
@@ -202,14 +133,35 @@ function MenuTile({
   );
 }
 
-function SearchButton({ onClick }: { onClick: () => void }) {
+/** Строка выхода в самом конце страницы — только на телефоне; на ПК выход в шапке. */
+export function MobileSignOut({ ownerEmail }: { ownerEmail: string | null }) {
+  if (!ownerEmail) return null;
+
+  return (
+    <div className="mt-[24px] flex items-center justify-between gap-3 border-t border-line min-[600px]:hidden">
+      <span className="text-[12px] text-text-3">Вход: владелец</span>
+      <form action={logout}>
+        <button
+          type="submit"
+          title={ownerEmail}
+          className="-mr-[6px] inline-flex min-h-[44px] items-center gap-[6px] px-[6px] text-[12.5px] text-text-2 transition-colors duration-[120ms] hover:text-text"
+        >
+          <LogOut size={15} strokeWidth={1.5} />
+          Выйти
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function SearchButton({ onClick, className = '' }: { onClick: () => void; className?: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label="Поиск"
       title="Поиск  /"
-      className="text-text-2 transition-colors duration-[120ms] hover:text-text"
+      className={`text-text-2 transition-colors duration-[120ms] hover:text-text ${className}`}
     >
       <Search size={17} strokeWidth={1.5} />
     </button>

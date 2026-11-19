@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { CardProvider } from './CardProvider';
 import { CollectionProvider } from './CollectionProvider';
 import { DisksProvider } from './DisksProvider';
-import { Header } from './Header';
+import { Header, MobileSignOut } from './Header';
 import { ListsProvider } from './ListsProvider';
 import { SearchProvider } from './SearchProvider';
 
@@ -32,6 +32,7 @@ export function SiteShell({
               <div className="mx-auto w-full max-w-[1280px] px-[18px]">
                 <Header ownerEmail={ownerEmail} />
                 {children}
+                <MobileSignOut ownerEmail={ownerEmail} />
               </div>
             </SearchProvider>
           </CardProvider>
