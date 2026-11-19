@@ -10,6 +10,32 @@
 
 <!-- Новые записи добавляются ниже этой строки, каждая сверху -->
 
+## 2026-11-19 (2)
+Этап 7, часть 1: вход через Google и удаление `/dev`. Auth.js v5
+(`next-auth@5.0.0-beta.32`, закреплена точно), JWT без адаптера, `trustHost`;
+пускает только подтверждённый Google email, равный `ALLOWED_EMAIL` (trim, без
+регистра), пустой `ALLOWED_EMAIL` не пускает никого. Middleware закрывает весь
+сайт и `/api` (страницы → `/vhod?callbackUrl=…`, API → 401 JSON), сверяет email
+сессии на каждом запросе; пропускает вход, `/api/auth/*`, статику, `favicon`,
+`robots.txt`, манифест и иконки PWA. Проверка выключена только при
+`VERCEL_ENV=preview` и в `next dev`. Своя страница `/vhod` без шапки (отказ —
+строка с `AlertCircle`); выход — круглая кнопка в шапке на ПК и пункт меню на
+телефоне, на preview и в dev её нет. Шапка и провайдеры данных переехали в
+`SiteShell`, чтобы на `/vhod` не уходили запросы с 401.
+Удалено: `app/dev/page.tsx` (вся папка `app/dev`). Только ей ничего больше не
+служило — поиск, `POST /api/movies`, `Poster` и провайдеры нужны оверлею
+поиска и остаются; ссылок на `/dev` в коде не было.
+Проверено: `next build` чистый; production-сборка локально с тестовыми
+ключами — владелец проходит, чужой адрес и пустой `ALLOWED_EMAIL` получают
+отказ, `/api/movies` без сессии → 401, редирект Google собирается верно,
+`VERCEL_ENV=preview` открывает сайт без кнопки выхода. На боевом с настоящим
+Google не проверено. Данные не трогались.
+Файлы: auth.ts, middleware.ts, app/api/auth/[...nextauth]/route.ts,
+app/vhod/page.tsx, app/actions.ts, components/SiteShell.tsx, app/layout.tsx,
+components/Header.tsx, app/dev/page.tsx (удалён), .env.example, package.json,
+package-lock.json, docs/SPEC.md, docs/CLAUDE.md, docs/STATE.md,
+docs/CHANGELOG.md
+
 ## 2026-11-19
 Больше цвета по решению владельца — меняет дизайн-систему (раздел 6
 SPEC/CLAUDE обновлён). Новая вторичная палитра `--sky #7DC4FA`, `--violet

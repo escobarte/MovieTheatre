@@ -1,13 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { Onest } from 'next/font/google';
 
-import { CardProvider } from '@/components/CardProvider';
-import { CollectionProvider } from '@/components/CollectionProvider';
-import { DisksProvider } from '@/components/DisksProvider';
+import { auth, authBypassed } from '@/auth';
 import { FocusRing } from '@/components/FocusRing';
-import { Header } from '@/components/Header';
-import { ListsProvider } from '@/components/ListsProvider';
-import { SearchProvider } from '@/components/SearchProvider';
+import { SiteShell } from '@/components/SiteShell';
 
 import './globals.css';
 
@@ -28,25 +24,15 @@ export const viewport: Viewport = {
   colorScheme: 'dark',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // На preview и в development входа нет — и кнопки выхода тоже.
+  const session = authBypassed() ? null : await auth();
+
   return (
     <html lang="ru" className={onest.variable}>
       <body>
         <FocusRing />
-        <CollectionProvider>
-          <ListsProvider>
-            <DisksProvider>
-              <CardProvider>
-                <SearchProvider>
-                  <div className="mx-auto w-full max-w-[1280px] px-[18px]">
-                    <Header />
-                    {children}
-                  </div>
-                </SearchProvider>
-              </CardProvider>
-            </DisksProvider>
-          </ListsProvider>
-        </CollectionProvider>
+        <SiteShell ownerEmail={session?.user?.email ?? null}>{children}</SiteShell>
       </body>
     </html>
   );

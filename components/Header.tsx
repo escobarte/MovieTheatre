@@ -1,9 +1,11 @@
 'use client';
 
-import { Menu, Plus, Search, X } from 'lucide-react';
+import { LogOut, Menu, Plus, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+
+import { logout } from '@/app/actions';
 
 import { useSearch } from './SearchProvider';
 
@@ -15,7 +17,8 @@ const NAV = [
   { href: '/diski', label: 'Диски' },
 ];
 
-export function Header() {
+/** ownerEmail есть только при настоящем входе — на preview и в dev выхода нет. */
+export function Header({ ownerEmail }: { ownerEmail: string | null }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const { openSearch } = useSearch();
@@ -56,6 +59,18 @@ export function Header() {
       <div className="hidden items-center gap-6 min-[600px]:flex">
         <SearchButton onClick={() => openSearch('search')} />
         <AddButton onClick={() => openSearch('add')} />
+        {ownerEmail && (
+          <form action={logout}>
+            <button
+              type="submit"
+              aria-label="Выйти"
+              title={`Выйти · ${ownerEmail}`}
+              className="flex h-[32px] w-[32px] items-center justify-center rounded-pill border border-line-strong text-text-2 transition-colors duration-[120ms] hover:text-text"
+            >
+              <LogOut size={16} strokeWidth={1.5} />
+            </button>
+          </form>
+        )}
       </div>
 
       {/* <600px: вторая строка — меню и поиск слева, «Добавить» справа (6.7). */}
@@ -78,6 +93,16 @@ export function Header() {
       {menuOpen && (
         <nav className="flex w-full flex-col gap-3 border-t border-line pt-4 min-[600px]:hidden">
           {NAV.map((item) => navLink(item.href, item.label))}
+          {ownerEmail && (
+            <form action={logout}>
+              <button
+                type="submit"
+                className="text-text-2 transition-colors duration-[120ms] hover:text-text"
+              >
+                Выйти
+              </button>
+            </form>
+          )}
         </nav>
       )}
     </header>

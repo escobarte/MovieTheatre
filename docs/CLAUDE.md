@@ -29,20 +29,25 @@ Next.js 15 (App Router) + TypeScript + Tailwind v4 · шрифт Onest · lucide
 ## Карта проекта
 
 ```
+auth.ts                 Auth.js: Google, ALLOWED_EMAIL, authBypassed()
+middleware.ts           закрывает весь сайт и /api, пропуск для preview и dev
 app/
-  layout.tsx            провайдеры, шапка
+  layout.tsx            сессия → SiteShell (провайдеры, шапка)
+  actions.ts            серверное действие выхода
   page.tsx              Главная: карусель, жанры, полки
+  vhod/page.tsx         вход и ошибки входа, без шапки
   vse-kino/page.tsx     каталог с фильтрами
   spiski/               подборки и сохранённые фильтры (page, [id])
   diski/                диски (page, [id])
   statistika/page.tsx   статистика
-  dev/page.tsx          служебная, временная, удалить на этапе 7
-  api/                  movies, movies/[id], search, lists, lists/[id],
-                        lists/[id]/items, views, disks, disks/[id]
-components/             Header, CollectionProvider, CardProvider, MovieCard,
-                        SearchProvider, SearchOverlay, ListsProvider,
-                        DisksProvider, Carousel, Shelf, Poster, GenreDoor,
-                        catalog/FilterSelect, catalog/PickOne
+  api/                  auth/[...nextauth], movies, movies/[id], search,
+                        lists, lists/[id], lists/[id]/items, views,
+                        disks, disks/[id]
+components/             SiteShell, Header, FocusRing, CollectionProvider,
+                        CardProvider, MovieCard, SearchProvider,
+                        SearchOverlay, ListsProvider, DisksProvider,
+                        Carousel, Shelf, Poster, ListCover, GenreDoor,
+                        catalog/FilterSelect, catalog/PickOne, catalog/Select
 lib/                    tmdb, kinopoisk, merge, filters, query, collection,
                         search, stats, db/schema, db/index
 drizzle/                0000_init.sql, 0001_disks.sql
