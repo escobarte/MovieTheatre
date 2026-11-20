@@ -52,8 +52,8 @@ components/             SiteShell, Header, FocusRing, layers (Esc по слоя�
                         Carousel, Shelf, Poster, ListCover, GenreDoor,
                         catalog/FilterSelect, catalog/PickOne, catalog/Select
 lib/                    tmdb, kinopoisk, merge, filters, query, collection,
-                        search, stats, movie-patch (разбор состава и жанров
-                        для PATCH), db/schema, db/index
+                        search, stats, movie-patch (разбор и проверка правки
+                        записи для PATCH), db/schema, db/index
 drizzle/                0000_init.sql, 0001_disks.sql
 public/                 icon-192, icon-512, icon-maskable-512 (PNG)
 assets/                 макеты интерфейса (только справка); pwa/ — исходники

@@ -35,8 +35,11 @@ type RefillState = 'idle' | 'confirm' | 'running' | 'done' | 'kpFailed' | 'error
  * не придёт новая: так окно не схлопывается до «Загружаю». В этот миг тело
  * карточки inert — правка не должна уйти в запись, которой не видно.
  *
- * Состав и жанры — режиссёр, продюсеры, актёры, жанры, страна — показаны
- * текстом и правятся по карандашу рядом с «Сохранить» (castEditing).
+ * Два режима (5.7). Обычный — текстовые и числовые поля показаны текстом;
+ * статус, оценка, прогресс сериала, «В список», статус файла и диск активны
+ * всегда. Режим правки — по карандашу: эти поля становятся полями ввода,
+ * появляются «Перезаполнить из API» и «Сохранить». «Сохранить» возвращает
+ * в обычный режим и карточку не закрывает.
  */
 export function MovieCard({
   id,
@@ -60,8 +63,8 @@ export function MovieCard({
   const [movie, setMovie] = useState<Movie | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refill, setRefill] = useState<RefillState>('idle');
-  /** Правка пяти строк состава и жанров. Каждое открытие и листание — выключена. */
-  const [castEditing, setCastEditing] = useState(false);
+  /** Режим правки. Каждое открытие и листание ← → — обычный режим. */
+  const [editing, setEditing] = useState(false);
 
   const currentId = useRef(id);
 
@@ -79,7 +82,7 @@ export function MovieCard({
     setError(null);
     setRefill('idle');
     setSaveState('idle');
-    setCastEditing(false);
+    setEditing(false);
 
     let cancelled = false;
 
@@ -179,22 +182,33 @@ export function MovieCard({
   }, []);
 
   /**
-   * Кнопка «Сохранить» (п.3): снимает фокус, чтобы сработало сохранение
-   * активного поля, ждёт все идущие PATCH этой карточки и закрывает карточку,
-   * только если все они прошли успешно.
+   * «Сохранить», подсвеченный карандаш и Esc в правке: снять фокус (сработает
+   * сохранение активного поля), дождаться всех PATCH этой карточки и при
+   * успехе вернуться в обычный режим. Карточка остаётся открытой; при ошибке
+   * остаётся и режим правки — со статусом внизу.
    */
-  const handleSaveClick = useCallback(async () => {
-    if (await flush()) onClose();
-  }, [flush, onClose]);
+  const finishEditing = useCallback(async () => {
+    if (await flush()) setEditing(false);
+  }, [flush]);
 
-  // Esc и крестик закрывают сразу, но сначала снимают фокус — иначе правка
-  // в поле, из которого нажали Esc, потерялась бы вместе с карточкой.
+  // Крестик, клик вне окна, Esc в обычном режиме закрывают сразу, но сначала
+  // снимают фокус — иначе правка в поле потерялась бы вместе с карточкой.
   const closeNow = useCallback(() => {
     (document.activeElement as HTMLElement | null)?.blur?.();
     onClose();
   }, [onClose]);
 
-  const isTop = useLayer(LAYER.card, true, closeNow);
+  // Esc: обычный режим — закрыть; правка из поля — выйти из поля (оно
+  // сохранится); правка вне поля — как «Сохранить». Открытые выпадающие
+  // списки — слои выше, Esc сначала закрывает их.
+  const escape = useCallback(() => {
+    if (!editing) return closeNow();
+    const active = document.activeElement as HTMLElement | null;
+    if (isTyping(active)) active?.blur();
+    else void finishEditing();
+  }, [editing, closeNow, finishEditing]);
+
+  const isTop = useLayer(LAYER.card, true, escape);
 
   /**
    * «Назад» закрывает карточку адресом, минуя closeNow. Провайдер держит её
@@ -208,15 +222,6 @@ export function MovieCard({
     if (active && dialog.current?.contains(active)) active.blur();
     onClosed();
   }, [closing, onClosed]);
-
-  /** Карандаш: выключение сначала сохраняет; не сохранилось — правка остаётся. */
-  const toggleCastEditing = useCallback(async () => {
-    if (!castEditing) {
-      setCastEditing(true);
-      return;
-    }
-    if (await flush()) setCastEditing(false);
-  }, [castEditing, flush]);
 
   /** ← →: незавершённые правки сохраняются, как при «Сохранить»; не сохранились — остаёмся. */
   const stepping = useRef(false);
@@ -254,18 +259,20 @@ export function MovieCard({
 
   // Горячие клавиши карточки (5.11). Последние значения — через ref, чтобы
   // слушатель вешался один раз.
-  const latest = useRef({ movie, ready, canStep, save, step, isTop });
+  const latest = useRef({ movie, ready, canStep, save, step, isTop, editing });
   useEffect(() => {
-    latest.current = { movie, ready, canStep, save, step, isTop };
+    latest.current = { movie, ready, canStep, save, step, isTop, editing };
   });
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const { movie, ready, canStep, save, step, isTop } = latest.current;
+      const { movie, ready, canStep, save, step, isTop, editing } = latest.current;
       if (!movie || !isTop() || hasModifier(event) || isTyping(event.target)) return;
 
       // Листать можно и пока соседняя запись грузится — порядок знает провайдер.
+      // В режиме правки ← → не листают — чтобы не потерять ввод.
       if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        if (editing) return;
         const delta = event.key === 'ArrowLeft' ? -1 : 1;
         if (delta === -1 ? !canStep.prev : !canStep.next) return;
         event.preventDefault();
@@ -294,10 +301,10 @@ export function MovieCard({
   }, []);
 
   const hint = [
-    (canStep.prev || canStep.next) && '← → соседняя',
+    !editing && (canStep.prev || canStep.next) && '← → соседняя',
     '1–0 оценка',
     'W смотрел',
-    'Esc закрыть',
+    editing ? 'Esc готово' : 'Esc закрыть',
   ]
     .filter(Boolean)
     .join(' · ');
@@ -339,15 +346,19 @@ export function MovieCard({
           <p className="py-10 text-text-3">Загружаю карточку</p>
         ) : (
           <div inert={!ready} className={ready ? undefined : 'opacity-60'}>
-            <Body key={movie.id} movie={movie} save={save} castEditing={castEditing} />
-            <SaveBar
-              saveState={saveState}
-              onSave={handleSaveClick}
-              refill={refill}
-              onRefill={() => setRefill('confirm')}
-              castEditing={castEditing}
-              onToggleCast={() => void toggleCastEditing()}
-            />
+            <Body key={movie.id} movie={movie} save={save} editing={editing} />
+            {editing ? (
+              <SaveBar
+                saveState={saveState}
+                onSave={() => void finishEditing()}
+                refill={refill}
+                onRefill={() => setRefill('confirm')}
+              />
+            ) : (
+              <div className="mt-5 flex justify-end">
+                <PencilButton on={false} onClick={() => setEditing(true)} />
+              </div>
+            )}
             <p className="mt-4 hidden text-[11px] text-text-4 min-[600px]:block">{hint}</p>
           </div>
         )}
@@ -361,24 +372,20 @@ export function MovieCard({
 }
 
 /**
- * Строка с кнопкой «Сохранить» в самом конце карточки (п.1–4): обычный
- * элемент потока, без подложки и без sticky — прокрутил до конца, нажал.
- * Слева — «Перезаполнить из API» (2.2) и строка статуса.
+ * Нижняя строка режима правки: обычный элемент потока, без подложки и без
+ * sticky. Слева — «Перезаполнить из API» (2.2) и строка статуса, справа —
+ * подсвеченный карандаш и «Сохранить»; оба возвращают в обычный режим.
  */
 function SaveBar({
   saveState,
   onSave,
   refill,
   onRefill,
-  castEditing,
-  onToggleCast,
 }: {
   saveState: SaveState;
   onSave: () => void;
   refill: RefillState;
   onRefill: () => void;
-  castEditing: boolean;
-  onToggleCast: () => void;
 }) {
   const refillNotice =
     refill === 'done' ? (
@@ -419,18 +426,7 @@ function SaveBar({
       <span className="flex-1" />
 
       <span className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onToggleCast}
-          aria-label="Изменить состав и жанры"
-          aria-pressed={castEditing}
-          title="Изменить состав и жанры"
-          className={`flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full border border-line-strong transition-colors duration-[120ms] ${
-            castEditing ? 'bg-surface-3 text-text' : 'text-text-2 hover:bg-surface-2 hover:text-text'
-          }`}
-        >
-          <Pencil size={18} strokeWidth={1.5} />
-        </button>
+        <PencilButton on onClick={onSave} />
 
         {/* Не disabled на время сохранения: клик сразу после ввода в поле
             сам запускает сохранение (blur), и выключенная в этот миг кнопка
@@ -445,6 +441,24 @@ function SaveBar({
         </button>
       </span>
     </div>
+  );
+}
+
+/** Карандаш: в обычном режиме включает правку, подсвеченный — как «Сохранить». */
+function PencilButton({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Редактировать"
+      aria-pressed={on}
+      title="Редактировать"
+      className={`flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full border border-line-strong transition-colors duration-[120ms] ${
+        on ? 'bg-surface-3 text-text' : 'text-text-2 hover:bg-surface-2 hover:text-text'
+      }`}
+    >
+      <Pencil size={18} strokeWidth={1.5} />
+    </button>
   );
 }
 
@@ -502,11 +516,11 @@ function ConfirmRefill({ onConfirm, onCancel }: { onConfirm: () => void; onCance
 function Body({
   movie,
   save,
-  castEditing,
+  editing,
 }: {
   movie: Movie;
   save: (fields: Partial<Movie>) => void;
-  castEditing: boolean;
+  editing: boolean;
 }) {
   const isTv = movie.kind === 'tv';
 
@@ -537,66 +551,89 @@ function Body({
         </div>
 
         <div className="min-w-0 flex-1">
-          <EditText
-            value={movie.title}
-            onSave={(title) => save({ title: title || movie.title })}
-            className="w-full text-[22px] font-bold"
-          />
-
-          {movie.originalTitle && (
+          {editing ? (
             <EditText
-              value={movie.originalTitle}
-              onSave={(originalTitle) => save({ originalTitle })}
-              className="mt-1 w-full text-text-3"
+              value={movie.title}
+              label="Название"
+              onSave={(title) => save({ title: title || movie.title })}
+              className="w-full text-[22px] font-bold"
             />
+          ) : (
+            <h2 className="text-[22px] leading-tight font-bold break-words">{movie.title}</h2>
           )}
+
+          {movie.originalTitle &&
+            (editing ? (
+              <EditText
+                value={movie.originalTitle}
+                label="Оригинальное название"
+                onSave={(originalTitle) => save({ originalTitle: originalTitle || null })}
+                className="mt-1 w-full text-text-3"
+              />
+            ) : (
+              <p className="mt-1 break-words text-text-2">{movie.originalTitle}</p>
+            ))}
 
           <dl className="mt-4 flex flex-col gap-[6px]">
             <Row label="Год">
-              <EditNumber value={movie.year} onSave={(year) => save({ year })} width={70} />
+              {editing ? (
+                <EditNumber value={movie.year} label="Год" onSave={(year) => save({ year })} width={70} />
+              ) : (
+                text(movie.year === null ? null : String(movie.year))
+              )}
             </Row>
 
             {isTv ? (
               <>
                 <Row label="Объём">
-                  <span className="flex flex-wrap items-center gap-[6px]">
-                    <EditNumber
-                      value={movie.seasons}
-                      onSave={(seasons) => save({ seasons })}
-                      width="calc(4ch + 22px)"
-                    />
-                    <span className="text-text-3">
-                      {movie.seasons ? plural(movie.seasons, 'сезон', 'сезона', 'сезонов') : 'сезонов'},
+                  {editing ? (
+                    <span className="flex flex-wrap items-center gap-[6px]">
+                      <EditNumber
+                        value={movie.seasons}
+                        label="Сезонов"
+                        onSave={(seasons) => save({ seasons })}
+                        width="calc(4ch + 22px)"
+                      />
+                      <span className="text-text-3">
+                        {movie.seasons ? plural(movie.seasons, 'сезон', 'сезона', 'сезонов') : 'сезонов'},
+                      </span>
+                      <EditNumber
+                        value={movie.episodes}
+                        label="Серий"
+                        onSave={(episodes) => save({ episodes })}
+                        width="calc(4ch + 22px)"
+                      />
+                      <span className="text-text-3">
+                        {movie.episodes ? plural(movie.episodes, 'серия', 'серии', 'серий') : 'серий'},
+                        ~
+                      </span>
+                      <EditNumber
+                        value={movie.runtime}
+                        label="Минут в серии"
+                        onSave={(runtime) => save({ runtime })}
+                        width="calc(4ch + 22px)"
+                      />
+                      <span className="text-text-3">мин серия</span>
                     </span>
-                    <EditNumber
-                      value={movie.episodes}
-                      onSave={(episodes) => save({ episodes })}
-                      width="calc(4ch + 22px)"
-                    />
-                    <span className="text-text-3">
-                      {movie.episodes ? plural(movie.episodes, 'серия', 'серии', 'серий') : 'серий'},
-                      ~
-                    </span>
-                    <EditNumber
-                      value={movie.runtime}
-                      onSave={(runtime) => save({ runtime })}
-                      width="calc(4ch + 22px)"
-                    />
-                    <span className="text-text-3">мин серия</span>
-                  </span>
+                  ) : (
+                    text(tvVolume(movie))
+                  )}
                 </Row>
 
+                {/* Прогресс правится всегда, без карандаша. */}
                 <Row label="Прогресс">
                   <span className="flex flex-wrap items-center gap-[6px] text-text-3">
                     Сезон
                     <EditNumber
                       value={movie.progressSeason}
+                      label="Сезон"
                       onSave={(progressSeason) => save({ progressSeason })}
                       width="calc(4ch + 22px)"
                     />
                     Серия
                     <EditNumber
                       value={movie.progressEpisode}
+                      label="Серия"
                       onSave={(progressEpisode) => save({ progressEpisode })}
                       width="calc(4ch + 22px)"
                     />
@@ -605,19 +642,24 @@ function Body({
               </>
             ) : (
               <Row label="Хронометраж">
-                <span className="flex items-center gap-1">
-                  <EditNumber
-                    value={movie.runtime}
-                    onSave={(runtime) => save({ runtime })}
-                    width="calc(4ch + 22px)"
-                  />
-                  <span className="text-text-3">мин</span>
-                </span>
+                {editing ? (
+                  <span className="flex items-center gap-1">
+                    <EditNumber
+                      value={movie.runtime}
+                      label="Хронометраж"
+                      onSave={(runtime) => save({ runtime })}
+                      width="calc(4ch + 22px)"
+                    />
+                    <span className="text-text-3">мин</span>
+                  </span>
+                ) : (
+                  text(movie.runtime === null ? null : `${movie.runtime} мин`)
+                )}
               </Row>
             )}
 
             <Row label={isTv ? 'Создатель' : 'Режиссёр'}>
-              {castEditing ? (
+              {editing ? (
                 <EditValues
                   label={isTv ? 'Создатель' : 'Режиссёр'}
                   value={movie.director ?? ''}
@@ -631,7 +673,7 @@ function Body({
 
             {CAST_ROWS.map(({ field, label }) => (
               <Row key={field} label={label}>
-                {castEditing ? (
+                {editing ? (
                   <EditValues
                     label={label}
                     value={fromJson(movie[field]).join(', ')}
@@ -700,25 +742,44 @@ function Body({
         </Row>
 
         <Row label="Дата просмотра">
-          <input
-            type="date"
-            defaultValue={movie.watchedAt ?? ''}
-            onBlur={(e) => save({ watchedAt: e.target.value || null })}
-            className="field w-full text-[12px]"
-          />
+          {editing ? (
+            <input
+              type="date"
+              aria-label="Дата просмотра"
+              defaultValue={movie.watchedAt ?? ''}
+              onBlur={(e) => {
+                const next = e.target.value || null;
+                if (next !== movie.watchedAt) save({ watchedAt: next });
+              }}
+              className="field w-full text-[12px]"
+            />
+          ) : (
+            text(movie.watchedAt && formatDate(movie.watchedAt))
+          )}
         </Row>
 
         <Row label="Теги">
-          <EditText
-            value={fromJson(movie.tags).join(', ')}
-            placeholder="через запятую"
-            onSave={(value) => save({ tags: toJson(value) })}
-            className="w-full"
-          />
+          {editing ? (
+            <EditValues
+              label="Теги"
+              value={fromJson(movie.tags).join(', ')}
+              parse={(value) => listValue('tags', value)}
+              stored={movie.tags}
+              onSave={(tags) => save({ tags })}
+            />
+          ) : (
+            list(movie.tags)
+          )}
         </Row>
 
         <Row label="Заметка">
-          <EditArea value={movie.note ?? ''} onSave={(note) => save({ note: note || null })} />
+          {editing ? (
+            <EditArea value={movie.note ?? ''} onSave={(note) => save({ note: note || null })} />
+          ) : movie.note ? (
+            <p className="break-words whitespace-pre-line">{movie.note}</p>
+          ) : (
+            text(null)
+          )}
         </Row>
 
         <Row label="Списки">
@@ -737,34 +798,49 @@ function Body({
         </Row>
 
         <Row label="Раздача">
-          <EditText
-            value={movie.torrentUrl ?? ''}
-            placeholder="ссылка"
-            onSave={(torrentUrl) => save({ torrentUrl: torrentUrl || null })}
-            className="w-full"
-          />
+          {editing ? (
+            <EditText
+              value={movie.torrentUrl ?? ''}
+              label="Раздача"
+              placeholder="ссылка"
+              onSave={(torrentUrl) => save({ torrentUrl: torrentUrl || null })}
+              className="w-full"
+            />
+          ) : (
+            <TorrentLink value={movie.torrentUrl} />
+          )}
         </Row>
 
         <Row label="Диск">
-          <DiskField movie={movie} save={save} />
+          <DiskField movie={movie} save={save} editing={editing} />
         </Row>
 
         <Row label="Путь">
-          <EditText
-            value={movie.path ?? ''}
-            placeholder="папка или полный путь"
-            onSave={(path) => save({ path: path || null })}
-            className="w-full"
-          />
+          {editing ? (
+            <EditText
+              value={movie.path ?? ''}
+              label="Путь"
+              placeholder="папка или полный путь"
+              onSave={(path) => save({ path: path || null })}
+              className="w-full"
+            />
+          ) : (
+            <span className="break-all">{text(movie.path)}</span>
+          )}
         </Row>
 
         <Row label="Качество">
-          <EditText
-            value={movie.quality ?? ''}
-            placeholder="1080p, BDRemux…"
-            onSave={(quality) => save({ quality: quality || null })}
-            className="w-full"
-          />
+          {editing ? (
+            <EditText
+              value={movie.quality ?? ''}
+              label="Качество"
+              placeholder="1080p, BDRemux…"
+              onSave={(quality) => save({ quality: quality || null })}
+              className="w-full"
+            />
+          ) : (
+            text(movie.quality)
+          )}
         </Row>
       </Block>
     </>
@@ -772,17 +848,39 @@ function Body({
 }
 
 /**
- * Диск выбирается из заведённых, рядом необязательный вес в ГБ. Вес нужен
- * для подсчёта занятого места, но без него запись всё равно числится на диске
- * — просто попадает в «подсчёт неполный». Рядом с именем диска — остаток
- * места, чтобы было видно, куда ещё есть смысл класть файл.
+ * Раздача в обычном режиме: http(s) и magnet — ссылка «Раздача ↗» в новой
+ * вкладке, остальное (javascript: и прочее) — просто текст, не ссылка.
+ */
+function TorrentLink({ value }: { value: string | null }) {
+  if (!value) return text(null);
+  if (!/^(https?:\/\/|magnet:)/i.test(value)) return <span className="break-all">{value}</span>;
+  return (
+    <a
+      href={value}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={value}
+      className="underline decoration-line-strong underline-offset-[3px] transition-colors duration-[120ms] hover:decoration-text"
+    >
+      Раздача ↗
+    </a>
+  );
+}
+
+/**
+ * Диск выбирается из заведённых всегда, без карандаша; рядом необязательный
+ * вес в ГБ — он правится по карандашу. Вес нужен для подсчёта занятого места,
+ * но без него запись всё равно числится на диске — просто попадает в «подсчёт
+ * неполный». Рядом с именем диска — остаток места.
  */
 function DiskField({
   movie,
   save,
+  editing,
 }: {
   movie: Movie;
   save: (fields: Partial<Movie>) => void;
+  editing: boolean;
 }) {
   const { disks, reload } = useDisks();
 
@@ -807,18 +905,23 @@ function DiskField({
         }}
       />
 
-      <span className="flex items-center gap-[6px] text-text-3">
-        <EditNumber
-          value={movie.sizeGb}
-          onSave={async (sizeGb) => {
-            save({ sizeGb });
-            await reload();
-          }}
-          width={96}
-          step="0.1"
-        />
-        ГБ
-      </span>
+      {editing ? (
+        <span className="flex items-center gap-[6px] text-text-3">
+          <EditNumber
+            value={movie.sizeGb}
+            label="Вес, ГБ"
+            onSave={async (sizeGb) => {
+              save({ sizeGb });
+              await reload();
+            }}
+            width={96}
+            step="0.1"
+          />
+          ГБ
+        </span>
+      ) : (
+        text(movie.sizeGb === null ? null : `${formatGb(movie.sizeGb)} ГБ`)
+      )}
     </div>
   );
 }
@@ -1068,14 +1171,16 @@ function EditValues({
   );
 }
 
-/** Поле правится по клику: выглядит текстом, по фокусу становится полем. */
+/** Текстовое поле режима правки; сохраняет по расфокусировке. */
 function EditText({
   value,
+  label,
   onSave,
   placeholder,
   className = '',
 }: {
   value: string;
+  label: string;
   onSave: (value: string) => void;
   placeholder?: string;
   className?: string;
@@ -1084,6 +1189,7 @@ function EditText({
     <input
       key={value}
       defaultValue={value}
+      aria-label={label}
       placeholder={placeholder}
       onBlur={(e) => e.target.value !== value && onSave(e.target.value.trim())}
       className={`field ${className}`}
@@ -1093,11 +1199,13 @@ function EditText({
 
 function EditNumber({
   value,
+  label,
   onSave,
   width,
   step,
 }: {
   value: number | null;
+  label: string;
   onSave: (value: number | null) => void;
   width: number | string;
   step?: string;
@@ -1105,6 +1213,7 @@ function EditNumber({
   return (
     <input
       key={String(value)}
+      aria-label={label}
       type="number"
       min={0}
       step={step}
@@ -1125,6 +1234,7 @@ function EditArea({ value, onSave }: { value: string; onSave: (value: string) =>
       key={value}
       defaultValue={value}
       rows={3}
+      aria-label="Заметка"
       placeholder="о чём это было"
       onBlur={(e) => e.target.value !== value && onSave(e.target.value.trim())}
       className="field w-full resize-y"
@@ -1142,19 +1252,34 @@ function fromJson(value: string | null): string[] {
   }
 }
 
-function text(value: string | null): React.ReactNode {
-  return value ? value : <span className="text-text-4">—</span>;
-}
-
-function toJson(value: string): string {
-  const items = value
-    .split(',')
-    .map((v) => v.trim())
-    .filter(Boolean);
-  return JSON.stringify(items);
+/** Значение строки в обычном режиме; пустое — «—». */
+function text(value: string | null | undefined): React.ReactNode {
+  return value ? value : <span className="text-text-3">—</span>;
 }
 
 function list(value: string | null): React.ReactNode {
-  const items = fromJson(value);
-  return items.length ? items.join(', ') : <span className="text-text-4">—</span>;
+  return text(fromJson(value).join(', '));
+}
+
+/** «8 сезонов, 73 серии, ~55 мин серия» — что известно. */
+function tvVolume(movie: Movie): string | null {
+  const parts = [
+    movie.seasons !== null && `${movie.seasons} ${plural(movie.seasons, 'сезон', 'сезона', 'сезонов')}`,
+    movie.episodes !== null && `${movie.episodes} ${plural(movie.episodes, 'серия', 'серии', 'серий')}`,
+    movie.runtime !== null && `~${movie.runtime} мин серия`,
+  ].filter(Boolean);
+  return parts.length ? parts.join(', ') : null;
+}
+
+const MONTHS = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+];
+
+/** «2026-11-20» → «20 ноября 2026». */
+function formatDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  const [, year, month, day] = match;
+  return `${Number(day)} ${MONTHS[Number(month) - 1] ?? ''} ${year}`;
 }
