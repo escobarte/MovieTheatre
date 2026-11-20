@@ -141,7 +141,7 @@ function Catalog() {
   const visible = useMemo(() => sortEntries(found, filters.sort, seed), [found, filters.sort, seed]);
 
   const counts = useMemo(() => typeCounts(entries, filters), [entries, filters]);
-  const genreOptions = useMemo(() => options(entries, filters, 'genre'), [entries, filters]);
+  const genreOptions = useMemo(() => stableGenres(entries, filters), [entries, filters]);
   const rewatchCount = useMemo(() => flagCount(entries, filters, 'rewatch'), [entries, filters]);
   const favoriteCount = useMemo(() => flagCount(entries, filters, 'favorite'), [entries, filters]);
 
@@ -525,6 +525,21 @@ function options(
       count,
     }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ru'));
+}
+
+/**
+ * Пилюли жанров (5.3) стоят на месте при любых фильтрах: порядок — по числу
+ * записей во всей коллекции, при равенстве по алфавиту, и в ряду все жанры
+ * коллекции. Меняется только счётчик — он с учётом фильтров, может быть 0.
+ */
+function stableGenres(entries: Entry[], filters: Filters): Option[] {
+  const total = facetCounts(entries, EMPTY, 'genre');
+  const current = facetCounts(entries, filters, 'genre');
+
+  return [...total]
+    .map(([value, all]) => ({ value, label: labelOf('genre', value), count: current.get(value) ?? 0, all }))
+    .sort((a, b) => b.all - a.all || a.label.localeCompare(b.label, 'ru'))
+    .map(({ value, label, count }) => ({ value, label, count }));
 }
 
 function Toggle({

@@ -45,13 +45,16 @@ app/
                         movies/[id]/refill, search, lists, lists/[id],
                         lists/[id]/items, views, disks, disks/[id]
 components/             SiteShell, Header, FocusRing, layers (Esc по слоям,
-                        защита клавиш от полей ввода), CollectionProvider,
+                        защита клавиш от полей ввода), url-state (?m= и
+                        ?search= в адресе), ValuesEditor (поле-пилюли),
+                        CollectionProvider,
                         CardProvider, MovieCard, SearchProvider,
                         SearchOverlay, ListsProvider, DisksProvider,
                         Carousel, Shelf, Poster, ListCover, GenreDoor,
                         catalog/FilterSelect, catalog/PickOne, catalog/Select
 lib/                    tmdb, kinopoisk, merge, filters, query, collection,
-                        search, stats, db/schema, db/index
+                        search, stats, movie-patch (приведение PATCH к
+                        схеме), db/schema, db/index
 drizzle/                0000_init.sql, 0001_disks.sql
 public/                 icon-192, icon-512, icon-maskable-512 (PNG)
 assets/                 макеты интерфейса (только справка); pwa/ — исходники

@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   Check,
+  ChevronDown,
   Image as ImageIcon,
   Play,
   Plus,
@@ -10,16 +11,25 @@ import {
   Star,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { Select } from '@/components/catalog/Select';
-import { FILE_STATUS_LABELS, STATUS_DOT, STATUS_LABELS, formatGb, plural } from '@/lib/collection';
+import {
+  FILE_STATUS_LABELS,
+  STATUS_DOT,
+  STATUS_LABELS,
+  formatGb,
+  peopleOf,
+  plural,
+} from '@/lib/collection';
 import type { FileStatus, Movie, Status } from '@/lib/db/schema';
+import { labelOf } from '@/lib/filters';
 
 import { useCollection } from './CollectionProvider';
 import { useDisks } from './DisksProvider';
 import { LAYER, hasModifier, isTyping, useLayer } from './layers';
 import { useLists } from './ListsProvider';
+import { ValuesEditor, valueKey } from './ValuesEditor';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type RefillState = 'idle' | 'confirm' | 'running' | 'done' | 'kpFailed' | 'error';
@@ -84,7 +94,11 @@ export function MovieCard({
     };
   }, [id]);
 
+  const dialog = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
+    dialog.current?.focus({ preventScroll: true });
+
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
@@ -268,9 +282,14 @@ export function MovieCard({
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-bg/80 p-4 sm:p-8"
     >
       <div
+        ref={dialog}
         role="dialog"
         aria-modal="true"
         aria-label={movie?.title ?? 'Карточка записи'}
+        tabIndex={-1}
+        // Фокус уходит в карточку при открытии (иначе он остаётся в поле поиска
+        // под ней), но сам контейнер не элемент управления — рамку не рисуем.
+        style={{ outline: 'none' }}
         className="w-full max-w-[880px] rounded-lg bg-surface p-5 sm:p-[22px]"
       >
         <div className="flex items-start gap-4">
@@ -434,6 +453,11 @@ function ConfirmRefill({ onConfirm, onCancel }: { onConfirm: () => void; onCance
 
 function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) => void }) {
   const isTv = movie.kind === 'tv';
+  const known = useKnownValues();
+
+  /** Списки уходят JSON-строкой string[], пустой — null (как в схеме). */
+  const saveList = (field: ListField) => (next: string[]) =>
+    save({ [field]: next.length ? JSON.stringify(next) : null });
 
   return (
     <>
@@ -544,25 +568,73 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
             <Row label={isTv ? 'Создатель' : 'Режиссёр'}>
               <EditText
                 value={movie.director ?? ''}
+                placeholder="несколько — через запятую"
                 onSave={(director) => save({ director: director || null })}
                 className="w-full"
               />
             </Row>
 
-            <Row label="Продюсеры">{list(movie.producers)}</Row>
-            <Row label="В ролях">{list(movie.cast)}</Row>
-            <Row label="Жанры">{list(movie.genres)}</Row>
-            <Row label="Страна">{list(movie.countries)}</Row>
+            <Row label="Продюсеры">
+              <ValuesEditor
+                noun="продюсера"
+                values={fromJson(movie.producers)}
+                suggestions={known.people}
+                onChange={saveList('producers')}
+              />
+            </Row>
+            <Row label="В ролях">
+              <ValuesEditor
+                noun="актёра"
+                values={fromJson(movie.cast)}
+                suggestions={known.cast}
+                onChange={saveList('cast')}
+              />
+            </Row>
+            <Row label="Жанры">
+              <ValuesEditor
+                noun="жанр"
+                values={fromJson(movie.genres)}
+                suggestions={known.genres}
+                onChange={saveList('genres')}
+                normalize={(value) => value.toLowerCase()}
+                display={(value) => labelOf('genre', value)}
+              />
+            </Row>
+            <Row label="Страна">
+              <ValuesEditor
+                noun="страну"
+                values={fromJson(movie.countries)}
+                suggestions={known.countries}
+                onChange={saveList('countries')}
+              />
+            </Row>
           </dl>
 
-          <div className="mt-4 flex items-center gap-4">
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
             <Star size={14} strokeWidth={1.5} className="shrink-0 fill-gold text-gold" />
-            <Rating label="КП" value={movie.ratingKp} />
-            <Rating label="IMDb" value={movie.ratingImdb} />
-            <Rating label="TMDB" value={movie.ratingTmdb} />
+            {RATING_FIELDS.map(([field, label]) => (
+              <label key={field} className="flex items-center gap-[6px] text-[12px]">
+                <span className="text-text-3">{label}</span>
+                <EditNumber
+                  value={movie[field]}
+                  onSave={(value) => save({ [field]: value })}
+                  width="calc(4ch + 22px)"
+                  step="0.1"
+                  max={10}
+                  decimals={1}
+                  label={`Оценка ${label}`}
+                />
+              </label>
+            ))}
           </div>
 
-          {movie.overview && <p className="mt-4 text-text-2">{movie.overview}</p>}
+          <AutoArea
+            value={movie.overview ?? ''}
+            placeholder="описание"
+            minRows={4}
+            onSave={(overview) => save({ overview: overview || null })}
+            className="mt-4 text-text-2"
+          />
         </div>
       </div>
 
@@ -618,11 +690,11 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
         </Row>
 
         <Row label="Теги">
-          <EditText
-            value={fromJson(movie.tags).join(', ')}
-            placeholder="через запятую"
-            onSave={(value) => save({ tags: toJson(value) })}
-            className="w-full"
+          <ValuesEditor
+            noun="тег"
+            values={fromJson(movie.tags)}
+            suggestions={known.tags}
+            onChange={saveList('tags')}
           />
         </Row>
 
@@ -676,7 +748,131 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
           />
         </Row>
       </Block>
+
+      <LinksBlock movie={movie} save={save} />
     </>
+  );
+}
+
+type ListField = 'genres' | 'countries' | 'producers' | 'cast' | 'tags';
+
+const RATING_FIELDS = [
+  ['ratingKp', 'КП'],
+  ['ratingImdb', 'IMDb'],
+  ['ratingTmdb', 'TMDB'],
+] as const;
+
+/**
+ * Подсказки для редакторов-пилюль — из уже загруженной коллекции, без
+ * запросов. Продюсеров в облегчённой выдаче нет (раздел 4), поэтому им
+ * подсказываются люди, которые в коллекции есть: актёры и режиссёры.
+ */
+function useKnownValues() {
+  const { entries } = useCollection();
+
+  return useMemo(() => {
+    const rank = (lists: string[][]) => {
+      const counts = new Map<string, { value: string; count: number }>();
+      for (const list of lists) {
+        for (const value of list) {
+          const key = valueKey(value);
+          const seen = counts.get(key);
+          if (seen) seen.count += 1;
+          else counts.set(key, { value, count: 1 });
+        }
+      }
+      return [...counts.values()]
+        .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, 'ru'))
+        .map((item) => item.value);
+    };
+
+    return {
+      genres: rank(entries.map((e) => e.genres)),
+      countries: rank(entries.map((e) => e.countries)),
+      cast: rank(entries.map((e) => e.cast)),
+      tags: rank(entries.map((e) => e.tags)),
+      people: rank(entries.map((e) => [...e.cast, ...peopleOf(e.director)])),
+    };
+  }, [entries]);
+}
+
+/**
+ * «Ссылки» (5.7): постер, кадр и трейлер правятся здесь, свёрнуто по
+ * умолчанию — нужны редко. Рядом с адресом картинки — маленькое превью.
+ */
+function LinksBlock({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) => void }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <section className="mt-5 border-t border-line pt-4">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex items-center gap-[6px] text-[11px] font-medium tracking-[.1em] text-text-4 uppercase transition-colors duration-[120ms] hover:text-text-2"
+      >
+        Ссылки
+        <ChevronDown
+          size={15}
+          strokeWidth={1.5}
+          className={`transition-transform duration-[120ms] ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <dl className="mt-3 flex flex-col gap-[10px]">
+          <Row label="Постер">
+            <span className="flex items-center gap-3">
+              <EditText
+                value={movie.posterUrl ?? ''}
+                placeholder="адрес картинки"
+                onSave={(posterUrl) => save({ posterUrl: posterUrl || null })}
+                className="min-w-0 flex-1"
+              />
+              <Preview url={movie.posterUrl} width={40} height={60} />
+            </span>
+          </Row>
+          <Row label="Кадр">
+            <span className="flex items-center gap-3">
+              <EditText
+                value={movie.backdropUrl ?? ''}
+                placeholder="адрес картинки"
+                onSave={(backdropUrl) => save({ backdropUrl: backdropUrl || null })}
+                className="min-w-0 flex-1"
+              />
+              <Preview url={movie.backdropUrl} width={64} height={36} />
+            </span>
+          </Row>
+          <Row label="Трейлер">
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <EditText
+                value={movie.trailerKey ?? ''}
+                placeholder="dQw4w9WgXcQ"
+                onSave={(trailerKey) => save({ trailerKey: trailerKey || null })}
+                className="w-[180px] max-w-full"
+              />
+              <span className="text-[11.5px] text-text-3">ключ YouTube</span>
+            </span>
+          </Row>
+        </dl>
+      )}
+    </section>
+  );
+}
+
+function Preview({ url, width, height }: { url: string | null; width: number; height: number }) {
+  return (
+    <span
+      className="flex shrink-0 items-center justify-center overflow-hidden rounded-xs bg-surface-2 text-icon-dim"
+      style={{ width, height }}
+    >
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <ImageIcon size={15} strokeWidth={1.5} />
+      )}
+    </span>
   );
 }
 
@@ -880,17 +1076,6 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function Rating({ label, value }: { label: string; value: number | null }) {
-  return (
-    <span className="flex items-baseline gap-[5px] text-[12px]">
-      <span className="text-text-3">{label}</span>
-      <span className={value === null ? 'text-text-4' : 'text-gold'}>
-        {value === null ? '—' : value.toFixed(1)}
-      </span>
-    </span>
-  );
-}
-
 function Pills({
   options,
   value,
@@ -961,22 +1146,39 @@ function EditNumber({
   onSave,
   width,
   step,
+  max,
+  decimals,
+  label,
 }: {
   value: number | null;
   onSave: (value: number | null) => void;
   width: number | string;
   step?: string;
+  /** Больше — обрезается до max; меньше нуля — до нуля. */
+  max?: number;
+  /** Округление при сохранении: оценки — до десятых. */
+  decimals?: number;
+  label?: string;
 }) {
   return (
     <input
       key={String(value)}
       type="number"
       min={0}
+      max={max}
       step={step}
       defaultValue={value ?? ''}
+      aria-label={label}
       onBlur={(e) => {
-        const next = e.target.value ? Number(e.target.value) : null;
+        const raw = e.target.value.trim();
+        let next: number | null = raw === '' ? null : Number(raw);
+        if (next !== null) {
+          if (!Number.isFinite(next)) return;
+          next = Math.max(0, max === undefined ? next : Math.min(next, max));
+          if (decimals !== undefined) next = Number(next.toFixed(decimals));
+        }
         if (next !== value) onSave(next);
+        else e.target.value = value === null ? '' : String(value);
       }}
       style={{ width }}
       className="field"
@@ -997,6 +1199,46 @@ function EditArea({ value, onSave }: { value: string; onSave: (value: string) =>
   );
 }
 
+/** Поле, растущее по содержимому (описание): не меньше minRows строк. */
+function AutoArea({
+  value,
+  onSave,
+  placeholder,
+  minRows,
+  className = '',
+}: {
+  value: string;
+  onSave: (value: string) => void;
+  placeholder?: string;
+  minRows: number;
+  className?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  const fit = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    // border-box: к высоте содержимого с отступами добавляется рамка.
+    el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+  }, []);
+
+  useLayoutEffect(fit, [value, fit]);
+
+  return (
+    <textarea
+      ref={ref}
+      key={value}
+      defaultValue={value}
+      rows={minRows}
+      placeholder={placeholder}
+      onInput={fit}
+      onBlur={(e) => e.target.value !== value && onSave(e.target.value.trim())}
+      className={`field w-full resize-none ${className}`}
+    />
+  );
+}
+
 function fromJson(value: string | null): string[] {
   if (!value) return [];
   try {
@@ -1007,15 +1249,3 @@ function fromJson(value: string | null): string[] {
   }
 }
 
-function toJson(value: string): string {
-  const items = value
-    .split(',')
-    .map((v) => v.trim())
-    .filter(Boolean);
-  return JSON.stringify(items);
-}
-
-function list(value: string | null): React.ReactNode {
-  const items = fromJson(value);
-  return items.length ? items.join(', ') : <span className="text-text-4">—</span>;
-}
