@@ -4,6 +4,7 @@ import {
   AlertCircle,
   Check,
   ChevronDown,
+  Pencil,
   Image as ImageIcon,
   Play,
   Plus,
@@ -21,6 +22,7 @@ import {
   formatGb,
   peopleOf,
   plural,
+  tvProgress,
 } from '@/lib/collection';
 import type { FileStatus, Movie, Status } from '@/lib/db/schema';
 import { labelOf } from '@/lib/filters';
@@ -49,17 +51,24 @@ export function MovieCard({
   onClose,
   canStep,
   onStep,
+  closing,
+  onClosed,
 }: {
   id: number;
   justAdded: boolean;
   onClose: () => void;
   canStep: { prev: boolean; next: boolean };
   onStep: (delta: -1 | 1) => void;
+  /** Адрес карточку уже закрыл — последний кадр перед снятием. */
+  closing: boolean;
+  onClosed: () => void;
 }) {
   const { applyPatch } = useCollection();
   const [movie, setMovie] = useState<Movie | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refill, setRefill] = useState<RefillState>('idle');
+  /** Режим правки (5.7). Каждое открытие и каждая соседняя запись — просмотр. */
+  const [editing, setEditing] = useState(false);
 
   const currentId = useRef(id);
 
@@ -77,6 +86,7 @@ export function MovieCard({
     setError(null);
     setRefill('idle');
     setSaveState('idle');
+    setEditing(false);
 
     let cancelled = false;
 
@@ -175,22 +185,46 @@ export function MovieCard({
   }, []);
 
   /**
-   * Кнопка «Сохранить» (п.3): снимает фокус, чтобы сработало сохранение
-   * активного поля, ждёт все идущие PATCH этой карточки и закрывает карточку,
-   * только если все они прошли успешно.
+   * «Сохранить» (5.7): снимает фокус, чтобы сработало сохранение активного
+   * поля, ждёт все идущие PATCH и при успехе возвращает в просмотр. Карточка
+   * не закрывается; при ошибке остаёмся в правке со статусом.
    */
-  const handleSaveClick = useCallback(async () => {
-    if (await flush()) onClose();
-  }, [flush, onClose]);
+  const finishEditing = useCallback(async () => {
+    if (await flush()) setEditing(false);
+  }, [flush]);
 
-  // Esc и крестик закрывают сразу, но сначала снимают фокус — иначе правка
-  // в поле, из которого нажали Esc, потерялась бы вместе с карточкой.
+  // Крестик и клик вне окна закрывают сразу, но сначала снимают фокус —
+  // иначе правка в поле, откуда ушли, потерялась бы вместе с карточкой.
   const closeNow = useCallback(() => {
     (document.activeElement as HTMLElement | null)?.blur?.();
     onClose();
   }, [onClose]);
 
-  const isTop = useLayer(LAYER.card, true, closeNow);
+  // Карточку закрыли адресом («Назад» телефона, мимо closeNow): провайдер
+  // держит её ещё один кадр с closing. Фокус снимается здесь, в обычном
+  // эффекте, — onBlur поля сохраняет ввод; при снятии узлов из DOM ReactDOM
+  // событий не доставляет, и правка бы потерялась.
+  useEffect(() => {
+    if (!closing) return;
+    const active = document.activeElement as HTMLElement | null;
+    if (active && dialog.current?.contains(active)) active.blur();
+    onClosed();
+  }, [closing, onClosed]);
+
+  const editingRef = useRef(editing);
+  useEffect(() => {
+    editingRef.current = editing;
+  });
+
+  /** Esc: в просмотре закрывает; в правке из поля — выходит из поля, иначе как «Сохранить». */
+  const escape = useCallback(() => {
+    if (!editingRef.current) return closeNow();
+    const active = document.activeElement;
+    if (isTyping(active)) (active as HTMLElement).blur();
+    else void finishEditing();
+  }, [closeNow, finishEditing]);
+
+  const isTop = useLayer(LAYER.card, true, escape);
 
   /** ← →: незавершённые правки сохраняются, как при «Сохранить»; не сохранились — остаёмся. */
   const stepping = useRef(false);
@@ -228,18 +262,19 @@ export function MovieCard({
 
   // Горячие клавиши карточки (5.11). Последние значения — через ref, чтобы
   // слушатель вешался один раз.
-  const latest = useRef({ movie, ready, canStep, save, step, isTop });
+  const latest = useRef({ movie, ready, canStep, save, step, isTop, editing });
   useEffect(() => {
-    latest.current = { movie, ready, canStep, save, step, isTop };
+    latest.current = { movie, ready, canStep, save, step, isTop, editing };
   });
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const { movie, ready, canStep, save, step, isTop } = latest.current;
+      const { movie, ready, canStep, save, step, isTop, editing } = latest.current;
       if (!movie || !isTop() || hasModifier(event) || isTyping(event.target)) return;
 
       // Листать можно и пока соседняя запись грузится — порядок знает провайдер.
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      // В правке не листаем: так не потерять ввод.
+      if (!editing && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
         const delta = event.key === 'ArrowLeft' ? -1 : 1;
         if (delta === -1 ? !canStep.prev : !canStep.next) return;
         event.preventDefault();
@@ -268,10 +303,10 @@ export function MovieCard({
   }, []);
 
   const hint = [
-    (canStep.prev || canStep.next) && '← → соседняя',
+    !editing && (canStep.prev || canStep.next) && '← → соседняя',
     '1–0 оценка',
     'W смотрел',
-    'Esc закрыть',
+    editing ? 'Esc готово' : 'Esc закрыть',
   ]
     .filter(Boolean)
     .join(' · ');
@@ -315,14 +350,35 @@ export function MovieCard({
           <p className="py-10 text-text-3">Загружаю карточку</p>
         ) : (
           <div inert={!ready} className={ready ? undefined : 'opacity-60'}>
-            <Body key={movie.id} movie={movie} save={save} />
-            <SaveBar
-              saveState={saveState}
-              onSave={handleSaveClick}
-              refill={refill}
-              onRefill={() => setRefill('confirm')}
-            />
-            <p className="mt-4 hidden text-[11px] text-text-4 min-[600px]:block">{hint}</p>
+            {editing ? (
+              <>
+                <Body key={movie.id} movie={movie} save={save} />
+                <SaveBar
+                  saveState={saveState}
+                  onSave={() => void finishEditing()}
+                  refill={refill}
+                  onRefill={() => setRefill('confirm')}
+                />
+                <p className="mt-4 hidden text-[11px] text-text-4 min-[600px]:block">{hint}</p>
+              </>
+            ) : (
+              <>
+                <View key={movie.id} movie={movie} />
+                <div className="mt-5 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    aria-label="Редактировать"
+                    title="Редактировать"
+                    className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full border border-line-strong text-text-2 transition-colors duration-[120ms] hover:bg-surface-2 hover:text-text"
+                  >
+                    <Pencil size={18} strokeWidth={1.5} />
+                  </button>
+                  <span className="flex-1" />
+                  <p className="hidden text-right text-[11px] text-text-4 min-[600px]:block">{hint}</p>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -388,11 +444,14 @@ function SaveBar({
 
       <span className="flex-1" />
 
+      {/* Не disabled на время сохранения: нажатие из поля сначала снимает фокус,
+          автосохранение поля ставит «saving», и выключенная кнопка съела бы клик.
+          Повторное нажатие безопасно — обработчик просто ждёт идущие сохранения. */}
       <button
         type="button"
         onClick={onSave}
-        disabled={saveState === 'saving'}
-        className="rounded-pill bg-red px-[18px] py-[9px] text-[12.5px] font-medium whitespace-nowrap text-white transition-colors duration-[120ms] hover:bg-red-hover disabled:opacity-60"
+        aria-busy={saveState === 'saving'}
+        className="rounded-pill bg-red px-[18px] py-[9px] text-[12.5px] font-medium whitespace-nowrap text-white transition-colors duration-[120ms] hover:bg-red-hover"
       >
         {saveState === 'saving' ? 'Сохраняю…' : 'Сохранить'}
       </button>
@@ -450,6 +509,271 @@ function ConfirmRefill({ onConfirm, onCancel }: { onConfirm: () => void; onCance
     </div>
   );
 }
+
+/* ─── Просмотр ───────────────────────────────────────────────────────── */
+
+/**
+ * Режим просмотра (5.7): ничего не редактируется, рамок полей нет. Пустые
+ * поля и пустые блоки не показываются — ни «—», ни заглушек.
+ */
+function View({ movie }: { movie: Movie }) {
+  const { lists } = useLists();
+  const { disks } = useDisks();
+  const isTv = movie.kind === 'tv';
+
+  const producers = fromJson(movie.producers);
+  const cast = fromJson(movie.cast);
+  const countries = fromJson(movie.countries);
+  const genres = fromJson(movie.genres);
+  const tags = fromJson(movie.tags);
+  const inLists = lists.filter((list) => list.items.some((item) => item.movieId === movie.id));
+  const disk = movie.diskId === null ? undefined : disks.find((d) => d.id === movie.diskId);
+
+  const length = isTv
+    ? [
+        movie.seasons && `${movie.seasons} ${plural(movie.seasons, 'сезон', 'сезона', 'сезонов')}`,
+        movie.episodes && `${movie.episodes} ${plural(movie.episodes, 'серия', 'серии', 'серий')}`,
+        movie.runtime && `~${movie.runtime} мин серия`,
+      ]
+        .filter(Boolean)
+        .join(', ')
+    : movie.runtime
+      ? `${movie.runtime} мин`
+      : '';
+  const meta = [movie.year, length].filter(Boolean).join(' · ');
+
+  const ratings = (
+    [
+      ['КП', movie.ratingKp],
+      ['IMDb', movie.ratingImdb],
+      ['TMDB', movie.ratingTmdb],
+    ] as const
+  ).filter(([, value]) => value !== null) as [string, number][];
+
+  const progress = isTv && movie.status === 'watching' ? tvProgress(movie) : null;
+  const watchingAt =
+    isTv && movie.status === 'watching' && (movie.progressSeason || movie.progressEpisode)
+      ? [
+          movie.progressSeason && `Сезон ${movie.progressSeason}`,
+          movie.progressEpisode && `Серия ${movie.progressEpisode}`,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : '';
+
+  const hasFile =
+    movie.fileStatus !== 'none' ||
+    !!movie.torrentUrl ||
+    !!disk ||
+    movie.sizeGb !== null ||
+    !!movie.path ||
+    !!movie.quality;
+
+  return (
+    <>
+      <div className="flex flex-col gap-5 sm:flex-row">
+        <div className="w-full max-w-[200px] shrink-0 self-center sm:self-start">
+          <div className="flex aspect-[2/3] items-center justify-center overflow-hidden rounded-xs bg-surface-2 text-icon-dim">
+            {movie.posterUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={movie.posterUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <ImageIcon size={22} strokeWidth={1.5} />
+            )}
+          </div>
+
+          {movie.trailerKey && (
+            <a
+              href={`https://www.youtube.com/watch?v=${encodeURIComponent(movie.trailerKey)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 flex items-center justify-center gap-[7px] rounded-pill bg-text px-[18px] py-[9px] text-[12.5px] font-medium text-bg transition-colors duration-[120ms] hover:bg-white"
+            >
+              <Play size={15} strokeWidth={1.5} />
+              Трейлер
+            </a>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[22px] leading-[1.25] font-bold break-words">{movie.title}</h2>
+          {movie.originalTitle && <p className="mt-1 text-text-2">{movie.originalTitle}</p>}
+          {meta && <p className="mt-2 text-[12px] text-text-3">{meta}</p>}
+
+          <dl className="mt-4 flex flex-col gap-[8px]">
+            {movie.director && (
+              <ViewRow label={isTv ? 'Создатель' : 'Режиссёр'}>{movie.director}</ViewRow>
+            )}
+            {producers.length > 0 && <ViewRow label="Продюсеры">{producers.join(', ')}</ViewRow>}
+            {cast.length > 0 && <ViewRow label="В ролях">{cast.join(', ')}</ViewRow>}
+            {countries.length > 0 && <ViewRow label="Страна">{countries.join(', ')}</ViewRow>}
+          </dl>
+
+          {genres.length > 0 && (
+            <PillRow className="mt-4" values={genres.map((genre) => labelOf('genre', genre))} />
+          )}
+
+          {ratings.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px]">
+              {ratings.map(([label, value]) => (
+                <span key={label} className="flex items-center gap-[5px]">
+                  <Star size={13} strokeWidth={1.5} className="fill-gold text-gold" />
+                  <span className="text-gold">{value.toFixed(1)}</span>
+                  <span className="text-text-3">{label}</span>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {movie.overview && (
+            <p className="mt-4 text-[13px] leading-[1.55] whitespace-pre-line text-text-2">
+              {movie.overview}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <ViewBlock title="Личное">
+        <ViewRow label="Статус">
+          <span className="inline-flex items-center gap-[7px]">
+            <span
+              className="h-[7px] w-[7px] shrink-0 rounded-full"
+              style={{ background: STATUS_DOT[movie.status] }}
+            />
+            {STATUS_LABELS[movie.status]}
+          </span>
+        </ViewRow>
+
+        {watchingAt && (
+          <ViewRow label="Прогресс">
+            <span>{watchingAt}</span>
+            {progress !== null && (
+              <span className="mt-[6px] block h-[3px] max-w-[220px] overflow-hidden rounded-pill bg-surface-3">
+                <span
+                  className="block h-full rounded-pill bg-st-watching"
+                  style={{ width: `${progress * 100}%` }}
+                />
+              </span>
+            )}
+          </ViewRow>
+        )}
+
+        {movie.status === 'watched' && movie.rewatch === 1 && (
+          <ViewRow label="Пересмотр">Хочу пересмотреть</ViewRow>
+        )}
+
+        {movie.rating !== null && (
+          <ViewRow label="Оценка">
+            <span className="inline-flex items-center gap-[5px]">
+              <Star size={13} strokeWidth={1.5} className="fill-gold text-gold" />
+              <span className="text-gold">{movie.rating}</span>
+              <span className="text-[11.5px] text-text-3">моя</span>
+            </span>
+          </ViewRow>
+        )}
+
+        {movie.watchedAt && <ViewRow label="Дата просмотра">{formatDate(movie.watchedAt)}</ViewRow>}
+        {tags.length > 0 && (
+          <ViewRow label="Теги">
+            <PillRow values={tags} />
+          </ViewRow>
+        )}
+        {movie.note && (
+          <ViewRow label="Заметка">
+            <span className="whitespace-pre-line">{movie.note}</span>
+          </ViewRow>
+        )}
+        {inLists.length > 0 && (
+          <ViewRow label="Списки">
+            <PillRow values={inLists.map((list) => list.title)} />
+          </ViewRow>
+        )}
+      </ViewBlock>
+
+      {hasFile && (
+        <ViewBlock title="Файл">
+          {movie.fileStatus !== 'none' && (
+            <ViewRow label="Статус">{FILE_STATUS_LABELS[movie.fileStatus]}</ViewRow>
+          )}
+          {movie.torrentUrl && (
+            <ViewRow label="Раздача">
+              {isSafeLink(movie.torrentUrl) ? (
+                <a
+                  href={movie.torrentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-text underline decoration-line-strong underline-offset-[3px] transition-colors duration-[120ms] hover:decoration-text"
+                >
+                  Раздача ↗
+                </a>
+              ) : (
+                <span className="break-all">{movie.torrentUrl}</span>
+              )}
+            </ViewRow>
+          )}
+          {disk && <ViewRow label="Диск">Диск {disk.label}</ViewRow>}
+          {movie.sizeGb !== null && <ViewRow label="Вес">{formatGb(movie.sizeGb)} ГБ</ViewRow>}
+          {movie.path && (
+            <ViewRow label="Путь">
+              <span className="break-all">{movie.path}</span>
+            </ViewRow>
+          )}
+          {movie.quality && <ViewRow label="Качество">{movie.quality}</ViewRow>}
+        </ViewBlock>
+      )}
+    </>
+  );
+}
+
+function ViewBlock({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mt-5 border-t border-line pt-4">
+      <h3 className="text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">{title}</h3>
+      <dl className="mt-3 flex flex-col gap-[8px]">{children}</dl>
+    </section>
+  );
+}
+
+/** «подпись — значение»: подпись 12px --text-3, значение 13px --text. */
+function ViewRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-[2px] sm:flex-row sm:items-baseline sm:gap-3">
+      <dt className="w-[120px] shrink-0 text-[12px] text-text-3">{label}</dt>
+      <dd className="min-w-0 flex-1 text-[13px] break-words text-text">{children}</dd>
+    </div>
+  );
+}
+
+/** Пилюли «не выбрано» без ×: жанры, теги, списки. */
+function PillRow({ values, className = '' }: { values: string[]; className?: string }) {
+  return (
+    <div className={`flex flex-wrap gap-[6px] ${className}`}>
+      {values.map((value) => (
+        <span
+          key={value}
+          className="max-w-full truncate rounded-pill border border-line-strong px-[12px] py-[4px] text-[12px] text-text"
+        >
+          {value}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Ссылка на раздачу — только http(s) и magnet: javascript: и прочее не делаем ссылкой. */
+function isSafeLink(url: string): boolean {
+  return /^(https?:\/\/|magnet:)/i.test(url.trim());
+}
+
+/** «2025-03-12» → «12 марта 2025». Дата без времени — без сдвига часового пояса. */
+function formatDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return value;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/* ─── Правка ─────────────────────────────────────────────────────────── */
 
 function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) => void }) {
   const isTv = movie.kind === 'tv';

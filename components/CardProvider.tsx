@@ -45,6 +45,14 @@ export function CardProvider({ children }: { children: React.ReactNode }) {
   const id = param !== null && /^\d+$/.test(param) ? Number(param) : null;
   const [meta, setMeta] = useState<Meta | null>(null);
 
+  // Закрытая адресом карточка остаётся ещё на кадр (closing) — чтобы успеть
+  // сохранить ввод из поля, где стоял фокус. Последний id — производное
+  // состояние, обновляется прямо при отрисовке.
+  const [lastId, setLastId] = useState<number | null>(null);
+  if (id !== null && id !== lastId) setLastId(id);
+  const shownId = id ?? lastId;
+  const onClosed = useCallback(() => setLastId(null), []);
+
   const openCard = useCallback((next: number, options?: OpenOptions) => {
     setMeta({
       openedId: next,
@@ -78,13 +86,15 @@ export function CardProvider({ children }: { children: React.ReactNode }) {
   return (
     <CardContext.Provider value={value}>
       {children}
-      {id !== null && (
+      {shownId !== null && (
         <MovieCard
-          id={id}
-          justAdded={meta?.openedId === id && meta.justAdded}
+          id={shownId}
+          justAdded={meta?.openedId === shownId && meta.justAdded}
           onClose={close}
           canStep={{ prev: prevId !== undefined, next: nextId !== undefined }}
           onStep={step}
+          closing={id === null}
+          onClosed={onClosed}
         />
       )}
     </CardContext.Provider>

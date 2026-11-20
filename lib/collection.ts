@@ -76,7 +76,9 @@ export const STATUS_DOT: Record<Status, string> = {
  * нет, поэтому доля приблизительная. Без числа сезонов или серий полоску
  * не показать.
  */
-export function tvProgress(entry: Entry): number | null {
+export function tvProgress(
+  entry: Pick<Entry, 'seasons' | 'episodes' | 'progressSeason' | 'progressEpisode'>,
+): number | null {
   if (!entry.seasons || !entry.episodes || !entry.progressSeason || !entry.progressEpisode) {
     return null;
   }
