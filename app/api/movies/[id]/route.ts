@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 
 import { getDb } from '@/lib/db';
 import { movies } from '@/lib/db/schema';
+import { normalizePatch } from '@/lib/movie-patch';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,9 +84,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Ожидается JSON' }, { status: 400 });
   }
 
-  const patch = Object.fromEntries(Object.entries(body).filter(([key]) => EDITABLE.has(key)));
-  if (Object.keys(patch).length === 0) {
+  const picked = Object.fromEntries(Object.entries(body).filter(([key]) => EDITABLE.has(key)));
+  if (Object.keys(picked).length === 0) {
     return NextResponse.json({ error: 'Нет полей для изменения' }, { status: 400 });
+  }
+
+  // Состав и жанры — тот же разбор, что в карточке (5.7).
+  let patch: Record<string, unknown>;
+  try {
+    patch = normalizePatch(picked);
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
   }
 
   try {

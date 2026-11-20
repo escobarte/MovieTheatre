@@ -4,6 +4,7 @@ import {
   AlertCircle,
   Check,
   Image as ImageIcon,
+  Pencil,
   Play,
   Plus,
   RefreshCw,
@@ -15,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Select } from '@/components/catalog/Select';
 import { FILE_STATUS_LABELS, STATUS_DOT, STATUS_LABELS, formatGb, plural } from '@/lib/collection';
 import type { FileStatus, Movie, Status } from '@/lib/db/schema';
+import { type ListField, directorValue, listValue } from '@/lib/movie-patch';
 
 import { useCollection } from './CollectionProvider';
 import { useDisks } from './DisksProvider';
@@ -32,6 +34,9 @@ type RefillState = 'idle' | 'confirm' | 'running' | 'done' | 'kpFailed' | 'error
  * При листании ← → id меняется, а прежняя запись остаётся на экране, пока
  * не придёт новая: так окно не схлопывается до «Загружаю». В этот миг тело
  * карточки inert — правка не должна уйти в запись, которой не видно.
+ *
+ * Состав и жанры — режиссёр, продюсеры, актёры, жанры, страна — показаны
+ * текстом и правятся по карандашу рядом с «Сохранить» (castEditing).
  */
 export function MovieCard({
   id,
@@ -39,17 +44,24 @@ export function MovieCard({
   onClose,
   canStep,
   onStep,
+  closing,
+  onClosed,
 }: {
   id: number;
   justAdded: boolean;
   onClose: () => void;
   canStep: { prev: boolean; next: boolean };
   onStep: (delta: -1 | 1) => void;
+  /** Адрес карточку уже закрыл («Назад») — последний кадр перед снятием. */
+  closing: boolean;
+  onClosed: () => void;
 }) {
   const { applyPatch } = useCollection();
   const [movie, setMovie] = useState<Movie | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refill, setRefill] = useState<RefillState>('idle');
+  /** Правка пяти строк состава и жанров. Каждое открытие и листание — выключена. */
+  const [castEditing, setCastEditing] = useState(false);
 
   const currentId = useRef(id);
 
@@ -67,6 +79,7 @@ export function MovieCard({
     setError(null);
     setRefill('idle');
     setSaveState('idle');
+    setCastEditing(false);
 
     let cancelled = false;
 
@@ -84,7 +97,12 @@ export function MovieCard({
     };
   }, [id]);
 
+  const dialog = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
+    // Фокус — в окно: иначе он остаётся в поле поиска под карточкой.
+    dialog.current?.focus({ preventScroll: true });
+
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
@@ -178,6 +196,28 @@ export function MovieCard({
 
   const isTop = useLayer(LAYER.card, true, closeNow);
 
+  /**
+   * «Назад» закрывает карточку адресом, минуя closeNow. Провайдер держит её
+   * ещё один кадр с closing: здесь, в обычном эффекте, снимается фокус — поле,
+   * где он стоял, сохраняется так же, как при закрытии крестиком. При снятии
+   * компонента это уже не сработало бы: React не доставляет blur из удаления.
+   */
+  useEffect(() => {
+    if (!closing) return;
+    const active = document.activeElement as HTMLElement | null;
+    if (active && dialog.current?.contains(active)) active.blur();
+    onClosed();
+  }, [closing, onClosed]);
+
+  /** Карандаш: выключение сначала сохраняет; не сохранилось — правка остаётся. */
+  const toggleCastEditing = useCallback(async () => {
+    if (!castEditing) {
+      setCastEditing(true);
+      return;
+    }
+    if (await flush()) setCastEditing(false);
+  }, [castEditing, flush]);
+
   /** ← →: незавершённые правки сохраняются, как при «Сохранить»; не сохранились — остаёмся. */
   const stepping = useRef(false);
   const step = useCallback(
@@ -268,6 +308,9 @@ export function MovieCard({
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-bg/80 p-4 sm:p-8"
     >
       <div
+        ref={dialog}
+        tabIndex={-1}
+        style={{ outline: 'none' }}
         role="dialog"
         aria-modal="true"
         aria-label={movie?.title ?? 'Карточка записи'}
@@ -296,12 +339,14 @@ export function MovieCard({
           <p className="py-10 text-text-3">Загружаю карточку</p>
         ) : (
           <div inert={!ready} className={ready ? undefined : 'opacity-60'}>
-            <Body key={movie.id} movie={movie} save={save} />
+            <Body key={movie.id} movie={movie} save={save} castEditing={castEditing} />
             <SaveBar
               saveState={saveState}
               onSave={handleSaveClick}
               refill={refill}
               onRefill={() => setRefill('confirm')}
+              castEditing={castEditing}
+              onToggleCast={() => void toggleCastEditing()}
             />
             <p className="mt-4 hidden text-[11px] text-text-4 min-[600px]:block">{hint}</p>
           </div>
@@ -325,11 +370,15 @@ function SaveBar({
   onSave,
   refill,
   onRefill,
+  castEditing,
+  onToggleCast,
 }: {
   saveState: SaveState;
   onSave: () => void;
   refill: RefillState;
   onRefill: () => void;
+  castEditing: boolean;
+  onToggleCast: () => void;
 }) {
   const refillNotice =
     refill === 'done' ? (
@@ -369,14 +418,32 @@ function SaveBar({
 
       <span className="flex-1" />
 
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={saveState === 'saving'}
-        className="rounded-pill bg-red px-[18px] py-[9px] text-[12.5px] font-medium whitespace-nowrap text-white transition-colors duration-[120ms] hover:bg-red-hover disabled:opacity-60"
-      >
-        {saveState === 'saving' ? 'Сохраняю…' : 'Сохранить'}
-      </button>
+      <span className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onToggleCast}
+          aria-label="Изменить состав и жанры"
+          aria-pressed={castEditing}
+          title="Изменить состав и жанры"
+          className={`flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full border border-line-strong transition-colors duration-[120ms] ${
+            castEditing ? 'bg-surface-3 text-text' : 'text-text-2 hover:bg-surface-2 hover:text-text'
+          }`}
+        >
+          <Pencil size={18} strokeWidth={1.5} />
+        </button>
+
+        {/* Не disabled на время сохранения: клик сразу после ввода в поле
+            сам запускает сохранение (blur), и выключенная в этот миг кнопка
+            съела бы его. Повторное нажатие безопасно — flush ждёт те же PATCH. */}
+        <button
+          type="button"
+          onClick={onSave}
+          aria-busy={saveState === 'saving'}
+          className="rounded-pill bg-red px-[18px] py-[9px] text-[12.5px] font-medium whitespace-nowrap text-white transition-colors duration-[120ms] hover:bg-red-hover"
+        >
+          {saveState === 'saving' ? 'Сохраняю…' : 'Сохранить'}
+        </button>
+      </span>
     </div>
   );
 }
@@ -432,7 +499,15 @@ function ConfirmRefill({ onConfirm, onCancel }: { onConfirm: () => void; onCance
   );
 }
 
-function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) => void }) {
+function Body({
+  movie,
+  save,
+  castEditing,
+}: {
+  movie: Movie;
+  save: (fields: Partial<Movie>) => void;
+  castEditing: boolean;
+}) {
   const isTv = movie.kind === 'tv';
 
   return (
@@ -542,17 +617,33 @@ function Body({ movie, save }: { movie: Movie; save: (fields: Partial<Movie>) =>
             )}
 
             <Row label={isTv ? 'Создатель' : 'Режиссёр'}>
-              <EditText
-                value={movie.director ?? ''}
-                onSave={(director) => save({ director: director || null })}
-                className="w-full"
-              />
+              {castEditing ? (
+                <EditValues
+                  label={isTv ? 'Создатель' : 'Режиссёр'}
+                  value={movie.director ?? ''}
+                  parse={directorValue}
+                  onSave={(director) => save({ director })}
+                />
+              ) : (
+                text(movie.director)
+              )}
             </Row>
 
-            <Row label="Продюсеры">{list(movie.producers)}</Row>
-            <Row label="В ролях">{list(movie.cast)}</Row>
-            <Row label="Жанры">{list(movie.genres)}</Row>
-            <Row label="Страна">{list(movie.countries)}</Row>
+            {CAST_ROWS.map(({ field, label }) => (
+              <Row key={field} label={label}>
+                {castEditing ? (
+                  <EditValues
+                    label={label}
+                    value={fromJson(movie[field]).join(', ')}
+                    parse={(value) => listValue(field, value)}
+                    stored={movie[field]}
+                    onSave={(value) => save({ [field]: value })}
+                  />
+                ) : (
+                  list(movie[field])
+                )}
+              </Row>
+            ))}
           </dl>
 
           <div className="mt-4 flex items-center gap-4">
@@ -933,6 +1024,50 @@ function Pills({
   );
 }
 
+const CAST_ROWS: { field: ListField; label: string }[] = [
+  { field: 'producers', label: 'Продюсеры' },
+  { field: 'cast', label: 'В ролях' },
+  { field: 'genres', label: 'Жанры' },
+  { field: 'countries', label: 'Страна' },
+];
+
+/**
+ * Строка состава в правке по карандашу: значения через запятую, разбор как
+ * на сервере. Сохраняет по расфокусировке, только если итог изменился, и
+ * сразу показывает итог разбора (повторы и пустые ушли).
+ */
+function EditValues({
+  label,
+  value,
+  parse,
+  stored,
+  onSave,
+}: {
+  label: string;
+  value: string;
+  parse: (value: string) => string | null;
+  /** Как список хранится сейчас (JSON). Без него поле — строка, как режиссёр. */
+  stored?: string | null;
+  onSave: (value: string | null) => void;
+}) {
+  const current = stored !== undefined ? stored : value || null;
+
+  return (
+    <input
+      key={value}
+      defaultValue={value}
+      aria-label={label}
+      placeholder="через запятую"
+      onBlur={(e) => {
+        const next = parse(e.target.value);
+        e.target.value = (stored !== undefined ? fromJson(next).join(', ') : next) ?? '';
+        if (next !== current) onSave(next);
+      }}
+      className="field w-full"
+    />
+  );
+}
+
 /** Поле правится по клику: выглядит текстом, по фокусу становится полем. */
 function EditText({
   value,
@@ -1005,6 +1140,10 @@ function fromJson(value: string | null): string[] {
   } catch {
     return [];
   }
+}
+
+function text(value: string | null): React.ReactNode {
+  return value ? value : <span className="text-text-4">—</span>;
 }
 
 function toJson(value: string): string {

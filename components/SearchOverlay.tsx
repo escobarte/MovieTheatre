@@ -109,7 +109,9 @@ export function SearchOverlay({
         prev.map((c) => (c.tmdbId === candidate.tmdbId ? { ...c, added: true } : c)),
       );
       await reload();
-      onClose();
+      setBusy(null);
+      // Поиск не закрывается: карточка ложится шагом истории поверх него,
+      // «Назад» из карточки возвращает сюда (5.7).
       openCard(data.movie.id, { justAdded: true });
     } catch {
       setBusy(null);
@@ -119,10 +121,8 @@ export function SearchOverlay({
   const activate = (row: Row | undefined) => {
     if (!row) return;
     if (row.kind === 'entry') {
-      onClose();
       openCard(row.entry.id);
     } else if (row.kind === 'list') {
-      onClose();
       window.location.href = `/spiski/${row.list.id}`;
     } else if (!row.candidate.added) {
       void add(row.candidate);
