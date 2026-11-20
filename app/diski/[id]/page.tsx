@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { use } from 'react';
 
+import { CardSequence } from '@/components/CardProvider';
 import { useCollection } from '@/components/CollectionProvider';
 import { useDisks } from '@/components/DisksProvider';
 import { Poster } from '@/components/Poster';
@@ -140,14 +141,16 @@ export default function DiskPage({ params }: { params: Promise<{ id: string }> }
         </p>
       ) : (
         <div className="mt-5 grid grid-cols-2 gap-[var(--gap)] min-[600px]:grid-cols-3 min-[900px]:grid-cols-5 min-[1280px]:grid-cols-6">
-          {onDisk.map((entry) => (
-            <div key={entry.id}>
-              <Poster entry={entry} />
-              <p className="mt-1 text-[11.5px] text-text-3">
-                {entry.sizeGb === null ? 'вес не указан' : `${formatGb(entry.sizeGb)} ГБ`}
-              </p>
-            </div>
-          ))}
+          <CardSequence ids={onDisk.map((entry) => entry.id)}>
+            {onDisk.map((entry) => (
+              <div key={entry.id}>
+                <Poster entry={entry} />
+                <p className="mt-1 text-[11.5px] text-text-3">
+                  {entry.sizeGb === null ? 'вес не указан' : `${formatGb(entry.sizeGb)} ГБ`}
+                </p>
+              </div>
+            ))}
+          </CardSequence>
         </div>
       )}
     </div>

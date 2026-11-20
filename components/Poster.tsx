@@ -4,7 +4,7 @@ import { Image as ImageIcon, Star } from 'lucide-react';
 
 import { posterRating, tvProgress, type Entry } from '@/lib/collection';
 
-import { useCard } from './CardProvider';
+import { useCard, useCardSequence } from './CardProvider';
 
 /**
  * Постер 2:3 на подложке --surface-2. Пока изображения нет — иконка в
@@ -14,6 +14,7 @@ import { useCard } from './CardProvider';
  */
 export function Poster({ entry, badge }: { entry: Entry; badge?: string }) {
   const { openCard } = useCard();
+  const sequence = useCardSequence();
   const rating = posterRating(entry);
   const progress = entry.status === 'watching' ? tvProgress(entry) : null;
 
@@ -21,7 +22,7 @@ export function Poster({ entry, badge }: { entry: Entry; badge?: string }) {
     <article>
       <button
         type="button"
-        onClick={() => openCard(entry.id)}
+        onClick={() => openCard(entry.id, { sequence })}
         aria-label={`${entry.title}: открыть карточку`}
         className="block w-full text-left"
       >

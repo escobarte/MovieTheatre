@@ -29,14 +29,23 @@ type KpDoc = {
 };
 
 /**
- * Возвращает null при любой неудаче: нет токена, лимит, таймаут, пустой ответ.
- * Вызывающая сторона обязана продолжить добавление без полей КП.
+ * data — найденная запись или null. failed — Кинопоиск не ответил как надо
+ * (нет токена, лимит, ошибка, таймаут); «ответил, но не нашёл» — не сбой.
+ * Перезаполнение по failed не затирает прежние поля КП (2.2).
  */
-export async function fetchByImdbId(imdbId: string): Promise<KpData | null> {
+export type KpLookup = { data: KpData | null; failed: boolean };
+
+/**
+ * Никогда не бросает. Вызывающая сторона обязана продолжить без полей КП,
+ * если data пусто.
+ */
+export async function lookupByImdbId(imdbId: string): Promise<KpLookup> {
+  const failed = { data: null, failed: true };
+
   const token = process.env.KINOPOISK_TOKEN;
   if (!token) {
     console.warn('[kp] KINOPOISK_TOKEN не задан — оценки КП и IMDb останутся пустыми');
-    return null;
+    return failed;
   }
 
   const url = new URL(`${BASE}/movie`);
@@ -51,23 +60,26 @@ export async function fetchByImdbId(imdbId: string): Promise<KpData | null> {
 
     if (!res.ok) {
       console.warn(`[kp] ${imdbId} → ${res.status} ${res.statusText}, продолжаем без КП`);
-      return null;
+      return failed;
     }
 
     const body = (await res.json()) as { docs?: KpDoc[] };
     const doc = body.docs?.[0];
-    if (!doc) return null;
+    if (!doc) return { data: null, failed: false };
 
     return {
-      kpId: doc.id ?? null,
-      title: doc.name || doc.alternativeName || null,
-      ratingKp: positive(doc.rating?.kp),
-      ratingImdb: positive(doc.rating?.imdb),
-      posterUrl: doc.poster?.url ?? null,
+      data: {
+        kpId: doc.id ?? null,
+        title: doc.name || doc.alternativeName || null,
+        ratingKp: positive(doc.rating?.kp),
+        ratingImdb: positive(doc.rating?.imdb),
+        posterUrl: doc.poster?.url ?? null,
+      },
+      failed: false,
     };
   } catch (error) {
     console.warn(`[kp] ${imdbId} недоступен, продолжаем без КП:`, (error as Error).message);
-    return null;
+    return failed;
   }
 }
 

@@ -4,6 +4,7 @@ import { Bookmark, ChevronDown, Shuffle, Star, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
+import { CardSequence } from '@/components/CardProvider';
 import { FilterSelect, type Option } from '@/components/catalog/FilterSelect';
 import { PickOne } from '@/components/catalog/PickOne';
 import { useCollection } from '@/components/CollectionProvider';
@@ -352,17 +353,19 @@ function Catalog() {
 
       {visible.length > 0 ? (
         <div className="mt-4 grid grid-cols-2 gap-[var(--gap)] min-[600px]:grid-cols-3 min-[900px]:grid-cols-5 min-[1280px]:grid-cols-6">
-          {visible.map((entry) => (
-            <Poster
-              key={entry.id}
-              entry={entry}
-              badge={
-                entry.kind === 'tv' && entry.progressSeason && entry.progressEpisode
-                  ? `S${entry.progressSeason} · E${entry.progressEpisode}`
-                  : undefined
-              }
-            />
-          ))}
+          <CardSequence ids={visible.map((entry) => entry.id)}>
+            {visible.map((entry) => (
+              <Poster
+                key={entry.id}
+                entry={entry}
+                badge={
+                  entry.kind === 'tv' && entry.progressSeason && entry.progressEpisode
+                    ? `S${entry.progressSeason} · E${entry.progressEpisode}`
+                    : undefined
+                }
+              />
+            ))}
+          </CardSequence>
         </div>
       ) : (
         <NothingMatches filters={filters} onReset={reset} />

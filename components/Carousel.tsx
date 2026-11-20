@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { STATUS_DOT, STATUS_LABELS, addedLabel, posterRating, type Entry } from '@/lib/collection';
 
-import { useCard } from './CardProvider';
+import { CardSequence, useCard, useCardSequence } from './CardProvider';
 
 const GAP = 12;
 
@@ -88,15 +88,17 @@ export function Carousel({ entries }: { entries: Entry[] }) {
         onScroll={onScroll}
         className="mt-3 flex snap-x snap-mandatory gap-[var(--gap)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {entries.map((entry) => (
-          <div
-            key={entry.id}
-            className="shrink-0 snap-start"
-            style={{ width: `calc((100% - ${(perPage - 1) * GAP}px) / ${perPage})` }}
-          >
-            <Card entry={entry} />
-          </div>
-        ))}
+        <CardSequence ids={entries.map((entry) => entry.id)}>
+          {entries.map((entry) => (
+            <div
+              key={entry.id}
+              className="shrink-0 snap-start"
+              style={{ width: `calc((100% - ${(perPage - 1) * GAP}px) / ${perPage})` }}
+            >
+              <Card entry={entry} />
+            </div>
+          ))}
+        </CardSequence>
       </div>
 
       {pages > 1 && (
@@ -124,6 +126,7 @@ export function Carousel({ entries }: { entries: Entry[] }) {
 
 function Card({ entry }: { entry: Entry }) {
   const { openCard } = useCard();
+  const sequence = useCardSequence();
   const rating = posterRating(entry);
   // По 5.2 в карточке год и режиссёр; у сериала в этом поле создатель.
   const meta = [entry.year, entry.director].filter(Boolean).join(' · ');
@@ -131,7 +134,7 @@ function Card({ entry }: { entry: Entry }) {
   return (
     <button
       type="button"
-      onClick={() => openCard(entry.id)}
+      onClick={() => openCard(entry.id, { sequence })}
       aria-label={`${entry.title}: открыть карточку`}
       className="flex h-full w-full flex-col rounded-md border border-line bg-surface p-[10px] text-left"
     >

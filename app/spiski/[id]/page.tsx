@@ -33,6 +33,7 @@ export default function ListPage({ params }: { params: Promise<{ id: string }> }
   if (!list) return <p className="py-10 text-text-3">Такой подборки нет</p>;
 
   const items = [...list.items].sort((a, b) => a.position - b.position);
+  const order = items.filter((item) => byId.has(item.movieId)).map((item) => item.movieId);
 
   const move = (from: number, to: number) => {
     if (to < 0 || to >= items.length || from === to) return;
@@ -120,7 +121,7 @@ export default function ListPage({ params }: { params: Promise<{ id: string }> }
                   entry={entry}
                   item={item}
                   position={index + 1}
-                  onOpen={() => entry && openCard(entry.id)}
+                  onOpen={() => entry && openCard(entry.id, { sequence: order })}
                   onMove={(delta) => move(index, index + delta)}
                   onNote={(note) => setNote(item.movieId, note)}
                   onRemove={() => remove(item.movieId)}

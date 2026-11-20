@@ -8,6 +8,7 @@ import { searchEntries, searchTitles } from '@/lib/search';
 
 import { useCard } from './CardProvider';
 import { useCollection } from './CollectionProvider';
+import { LAYER, useLayer } from './layers';
 import { useLists, type MovieList } from './ListsProvider';
 
 type Candidate = {
@@ -48,6 +49,8 @@ export function SearchOverlay({
   const [searching, setSearching] = useState(false);
   const [busy, setBusy] = useState<number | null>(null);
   const [cursor, setCursor] = useState(0);
+
+  useLayer(LAYER.search, true, onClose);
 
   const found = useMemo(() => searchEntries(entries, query), [entries, query]);
   const foundLists = useMemo(() => searchTitles(lists, query), [lists, query]);
@@ -127,7 +130,6 @@ export function SearchOverlay({
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === 'Escape') return onClose();
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       setCursor((c) => Math.min(c + 1, rows.length - 1));

@@ -5,6 +5,7 @@ import type { LucideIcon } from 'lucide-react';
 
 import type { Entry } from '@/lib/collection';
 
+import { CardSequence } from './CardProvider';
 import { Poster } from './Poster';
 
 /**
@@ -59,11 +60,13 @@ export function Shelf({
       </div>
 
       <div className="mt-[6px] -mb-2 flex gap-[var(--gap)] overflow-x-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {entries.map((entry) => (
-          <div key={entry.id} className="w-[104px] shrink-0">
-            <Poster entry={entry} badge={badge?.(entry)} />
-          </div>
-        ))}
+        <CardSequence ids={entries.map((entry) => entry.id)}>
+          {entries.map((entry) => (
+            <div key={entry.id} className="w-[104px] shrink-0">
+              <Poster entry={entry} badge={badge?.(entry)} />
+            </div>
+          ))}
+        </CardSequence>
       </div>
     </section>
   );

@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { Kind, NewMovie } from './db/schema';
-import { fetchByImdbId, type KpData } from './kinopoisk';
+import { lookupByImdbId, type KpData, type KpLookup } from './kinopoisk';
 import {
   BACKDROP_URL,
   POSTER_URL,
@@ -23,18 +23,32 @@ const json = (values: string[]) => JSON.stringify(values);
 /**
  * Слияние по разделу 3.3. Рейтинги хранятся тремя отдельными числами
  * и не усредняются. Кинопоиск может не ответить — тогда его поля пустые,
- * а запись всё равно собирается.
+ * а запись всё равно собирается. Не ответил TMDB — исключение.
  */
 export async function buildRecord(tmdbId: number, kind: Kind): Promise<NewMovie> {
+  return (await buildFromApi(tmdbId, kind)).record;
+}
+
+/**
+ * То же плюс что вышло с Кинопоиском — для перезаполнения (2.2): kp.data
+ * пусто, если КП не спрашивали (нет imdbId), не нашёл или не ответил;
+ * kp.failed — только последнее.
+ */
+export type Built = { record: NewMovie; kp: KpLookup };
+
+export async function buildFromApi(tmdbId: number, kind: Kind): Promise<Built> {
   return kind === 'tv' ? buildTv(tmdbId) : buildMovie(tmdbId);
 }
 
-async function buildMovie(tmdbId: number): Promise<NewMovie> {
+const NOT_ASKED: KpLookup = { data: null, failed: false };
+
+async function buildMovie(tmdbId: number): Promise<Built> {
   const tmdb = await getMovie(tmdbId);
   const imdbId = tmdb.imdb_id || null;
-  const kp = imdbId ? await fetchByImdbId(imdbId) : null;
+  const lookup = imdbId ? await lookupByImdbId(imdbId) : NOT_ASKED;
+  const kp = lookup.data;
 
-  return {
+  const record: NewMovie = {
     kind: 'movie',
     tmdbId: tmdb.id,
     imdbId,
@@ -62,14 +76,17 @@ async function buildMovie(tmdbId: number): Promise<NewMovie> {
 
     status: 'none',
   };
+
+  return { record, kp: lookup };
 }
 
-async function buildTv(tmdbId: number): Promise<NewMovie> {
+async function buildTv(tmdbId: number): Promise<Built> {
   const tmdb = await getTv(tmdbId);
   const imdbId = tmdb.external_ids?.imdb_id || null;
-  const kp = imdbId ? await fetchByImdbId(imdbId) : null;
+  const lookup = imdbId ? await lookupByImdbId(imdbId) : NOT_ASKED;
+  const kp = lookup.data;
 
-  return {
+  const record: NewMovie = {
     kind: 'tv',
     tmdbId: tmdb.id,
     imdbId,
@@ -100,6 +117,8 @@ async function buildTv(tmdbId: number): Promise<NewMovie> {
 
     status: 'none',
   };
+
+  return { record, kp: lookup };
 }
 
 /** kp.name → tmdb.title(ru) → tmdb.original_title */

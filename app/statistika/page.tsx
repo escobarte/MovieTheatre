@@ -365,7 +365,7 @@ function DiffList({
             <li key={entry.id}>
               <button
                 type="button"
-                onClick={() => openCard(entry.id)}
+                onClick={() => openCard(entry.id, { sequence: rows.map((row) => row.entry.id) })}
                 className="flex w-full items-baseline gap-2 rounded-sm text-left transition-colors duration-[120ms] hover:bg-surface-2"
               >
                 <span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: dotColor }} />

@@ -10,6 +10,48 @@
 
 <!-- Новые записи добавляются ниже этой строки, каждая сверху -->
 
+## 2026-11-20
+Этап 7, часть 2: PWA, горячие клавиши, «Перезаполнить из API».
+PWA: `app/manifest.ts` (Movie_Theatre, standalone, `#121217`, ru), иконка
+«MT и хлопушка» — 192/512 `any` и 512 `maskable` в `public/`, apple-touch 180
+(`app/apple-icon.png`), favicon 32 (`app/favicon.ico`, хлопушка без полосок).
+Буквы — кривые из Onest Bold (проверено по таблице имён шрифта), PNG
+сгенерированы один раз через Chromium, исходники SVG — `assets/pwa/`. В
+`<head>` — theme-color, `apple-mobile-web-app-capable` (Next 15 сам пишет
+только `mobile-web-app-capable`, добавлен вручную), title. Манифест и все
+иконки отдаются без входа, сервис-воркера нет.
+Клавиши: Esc закрывает только верхний слой — общий стек `components/layers.ts`
+(список → «В список»/подтверждение → карточка → поиск) вместо отдельных
+слушателей, которые раньше закрывали список и карточку одним нажатием; Esc
+из поля сначала сохраняет правку. ← → листают в порядке места, откуда открыта
+карточка (`openCard(id, { sequence })`, обёртка `CardSequence` у сетки, полок,
+карусели, диска; список и статистика передают порядок сами), ждут идущие
+сохранения; прежняя запись видна, пока грузится соседняя. 1–0 — оценка,
+W — смотрел/не смотрел (по коду клавиши, работает в русской раскладке).
+Подсказка внизу карточки на ПК.
+Перезаполнение: `POST /api/movies/[id]/refill` тем же `lib/merge`
+(`buildFromApi`); пишет только поля из API и `updatedAt`. Кинопоиск не дал
+записи — его поля и название прежние, при сбое `kpFailed: true`; TMDB не
+ответил — 502, запись не меняется. `lib/kinopoisk` теперь отличает сбой от
+«не нашёл» (`lookupByImdbId`), `fetchByImdbId` удалён. В карточке —
+вторичная кнопка, своё окно подтверждения, «Обновляю…» и итог в строке
+статуса; карточка и коллекция обновляются без перезагрузки.
+Проверено: `next build` чистый; без входа манифест и иконки 200, refill 401;
+в Chromium с подменёнными `/api` (база не затронута) — 33 проверки клавиш,
+слоёв Esc, листания, перезаполнения, 390px без горизонтального скролла.
+Файлы: app/manifest.ts, app/apple-icon.png, app/favicon.ico,
+public/icon-192.png, public/icon-512.png, public/icon-maskable-512.png,
+assets/pwa/icon.svg, assets/pwa/icon-maskable.svg, assets/pwa/favicon.svg,
+app/layout.tsx, app/api/movies/[id]/refill/route.ts, lib/merge.ts,
+lib/kinopoisk.ts, components/layers.ts, components/CardProvider.tsx,
+components/MovieCard.tsx, components/Poster.tsx, components/Shelf.tsx,
+components/Carousel.tsx, components/SearchProvider.tsx,
+components/SearchOverlay.tsx, components/catalog/Select.tsx,
+components/catalog/FilterSelect.tsx, components/catalog/PickOne.tsx,
+app/vse-kino/page.tsx, app/spiski/[id]/page.tsx, app/diski/[id]/page.tsx,
+app/statistika/page.tsx, docs/SPEC.md, docs/STATE.md, docs/CLAUDE.md,
+docs/CHANGELOG.md
+
 ## 2026-11-19 (4)
 Шапка на телефоне (< 600px) переделана; ПК-версия рендерится как раньше
 (высота шапки та же, 73.4px). Первая строка — логотип слева, поиск 44×44 и

@@ -32,18 +32,20 @@ Next.js 15 (App Router) + TypeScript + Tailwind v4 · шрифт Onest · lucide
 auth.ts                 Auth.js: Google, ALLOWED_EMAIL, authBypassed()
 middleware.ts           закрывает весь сайт и /api, пропуск для preview и dev
 app/
-  layout.tsx            сессия → SiteShell (провайдеры, шапка)
+  layout.tsx            сессия → SiteShell (провайдеры, шапка), теги PWA в <head>
   actions.ts            серверное действие выхода
+  manifest.ts           манифест PWA; apple-icon.png, favicon.ico — иконки
   page.tsx              Главная: карусель, жанры, полки
   vhod/page.tsx         вход и ошибки входа, без шапки
   vse-kino/page.tsx     каталог с фильтрами
   spiski/               подборки и сохранённые фильтры (page, [id])
   diski/                диски (page, [id])
   statistika/page.tsx   статистика
-  api/                  auth/[...nextauth], movies, movies/[id], search,
-                        lists, lists/[id], lists/[id]/items, views,
-                        disks, disks/[id]
-components/             SiteShell, Header, FocusRing, CollectionProvider,
+  api/                  auth/[...nextauth], movies, movies/[id],
+                        movies/[id]/refill, search, lists, lists/[id],
+                        lists/[id]/items, views, disks, disks/[id]
+components/             SiteShell, Header, FocusRing, layers (Esc по слоям,
+                        защита клавиш от полей ввода), CollectionProvider,
                         CardProvider, MovieCard, SearchProvider,
                         SearchOverlay, ListsProvider, DisksProvider,
                         Carousel, Shelf, Poster, ListCover, GenreDoor,
@@ -51,7 +53,9 @@ components/             SiteShell, Header, FocusRing, CollectionProvider,
 lib/                    tmdb, kinopoisk, merge, filters, query, collection,
                         search, stats, db/schema, db/index
 drizzle/                0000_init.sql, 0001_disks.sql
-assets/                 макеты интерфейса (только справка)
+public/                 icon-192, icon-512, icon-maskable-512 (PNG)
+assets/                 макеты интерфейса (только справка); pwa/ — исходники
+                        иконки в SVG, буквы в кривых
 docs/                   SPEC, CLAUDE, STATE, CHANGELOG, README
 ```
 

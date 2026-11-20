@@ -1,6 +1,15 @@
 'use client';
 
-import { AlertCircle, Check, Image as ImageIcon, Play, Plus, Star, X } from 'lucide-react';
+import {
+  AlertCircle,
+  Check,
+  Image as ImageIcon,
+  Play,
+  Plus,
+  RefreshCw,
+  Star,
+  X,
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Select } from '@/components/catalog/Select';
@@ -9,25 +18,40 @@ import type { FileStatus, Movie, Status } from '@/lib/db/schema';
 
 import { useCollection } from './CollectionProvider';
 import { useDisks } from './DisksProvider';
+import { LAYER, hasModifier, isTyping, useLayer } from './layers';
 import { useLists } from './ListsProvider';
+
+type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+type RefillState = 'idle' | 'confirm' | 'running' | 'done' | 'kpFailed' | 'error';
 
 /**
  * Карточка записи (5.7). Модальное окно поверх затемнённого экрана — так не
  * теряется позиция прокрутки. Любое поле правится по клику, сохранение
  * автоматическое, по расфокусировке.
+ *
+ * При листании ← → id меняется, а прежняя запись остаётся на экране, пока
+ * не придёт новая: так окно не схлопывается до «Загружаю». В этот миг тело
+ * карточки inert — правка не должна уйти в запись, которой не видно.
  */
 export function MovieCard({
   id,
   justAdded,
   onClose,
+  canStep,
+  onStep,
 }: {
   id: number;
   justAdded: boolean;
   onClose: () => void;
+  canStep: { prev: boolean; next: boolean };
+  onStep: (delta: -1 | 1) => void;
 }) {
   const { applyPatch } = useCollection();
   const [movie, setMovie] = useState<Movie | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refill, setRefill] = useState<RefillState>('idle');
+
+  const currentId = useRef(id);
 
   /** Учёт идущих сохранений (п.5): сюда попадает каждый PATCH из полей
    * карточки, включая выпадающие списки «Статус»/«Диск» и вес — все они
@@ -36,9 +60,14 @@ export function MovieCard({
   const batchFailed = useRef(false);
   const lastOutcome = useRef<'saved' | 'error'>('saved');
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveState, setSaveState] = useState<SaveState>('idle');
 
   useEffect(() => {
+    currentId.current = id;
+    setError(null);
+    setRefill('idle');
+    setSaveState('idle');
+
     let cancelled = false;
 
     fetch(`/api/movies/${id}`)
@@ -56,20 +85,14 @@ export function MovieCard({
   }, [id]);
 
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     return () => {
-      document.removeEventListener('keydown', onKey);
       document.body.style.overflow = overflow;
       if (savedTimer.current) clearTimeout(savedTimer.current);
     };
-  }, [onClose]);
+  }, []);
 
   /**
    * Сохранение по расфокусировке остаётся как есть — пишем в базу и сразу
@@ -78,8 +101,9 @@ export function MovieCard({
    */
   const save = useCallback(
     (fields: Partial<Movie>) => {
-      setMovie((prev) => (prev ? { ...prev, ...fields } : prev));
+      setMovie((prev) => (prev && prev.id === id ? { ...prev, ...fields } : prev));
       setSaveState('saving');
+      setRefill((state) => (state === 'running' || state === 'confirm' ? state : 'idle'));
       if (savedTimer.current) {
         clearTimeout(savedTimer.current);
         savedTimer.current = null;
@@ -96,8 +120,8 @@ export function MovieCard({
           const data = await res.json();
           if (!res.ok) throw new Error(data.error ?? res.statusText);
 
-          setMovie(data.movie);
-          applyPatch(id, data.movie);
+          if (data.movie.id === currentId.current) setMovie(data.movie);
+          applyPatch(data.movie.id, data.movie);
           setError(null);
         } catch (e) {
           batchFailed.current = true;
@@ -124,24 +148,123 @@ export function MovieCard({
     [id, applyPatch],
   );
 
+  /** Снять фокус (сработает сохранение активного поля) и дождаться всех PATCH.
+   *  true — если всё, что было в работе, сохранилось. */
+  const flush = useCallback(async () => {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    if (pending.current.size === 0) return true;
+
+    while (pending.current.size > 0) {
+      await Promise.allSettled(Array.from(pending.current));
+    }
+    return lastOutcome.current === 'saved';
+  }, []);
+
   /**
    * Кнопка «Сохранить» (п.3): снимает фокус, чтобы сработало сохранение
    * активного поля, ждёт все идущие PATCH этой карточки и закрывает карточку,
    * только если все они прошли успешно.
    */
   const handleSaveClick = useCallback(async () => {
+    if (await flush()) onClose();
+  }, [flush, onClose]);
+
+  // Esc и крестик закрывают сразу, но сначала снимают фокус — иначе правка
+  // в поле, из которого нажали Esc, потерялась бы вместе с карточкой.
+  const closeNow = useCallback(() => {
     (document.activeElement as HTMLElement | null)?.blur?.();
-
-    while (pending.current.size > 0) {
-      await Promise.allSettled(Array.from(pending.current));
-    }
-
-    if (lastOutcome.current === 'saved') onClose();
+    onClose();
   }, [onClose]);
+
+  const isTop = useLayer(LAYER.card, true, closeNow);
+
+  /** ← →: незавершённые правки сохраняются, как при «Сохранить»; не сохранились — остаёмся. */
+  const stepping = useRef(false);
+  const step = useCallback(
+    async (delta: -1 | 1) => {
+      if (stepping.current) return;
+      stepping.current = true;
+      try {
+        if (await flush()) onStep(delta);
+      } finally {
+        stepping.current = false;
+      }
+    },
+    [flush, onStep],
+  );
+
+  const runRefill = useCallback(async () => {
+    setRefill('running');
+    await flush();
+
+    try {
+      const res = await fetch(`/api/movies/${id}/refill`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? res.statusText);
+
+      if (data.movie.id === currentId.current) setMovie(data.movie);
+      applyPatch(data.movie.id, data.movie);
+      setRefill(data.kpFailed ? 'kpFailed' : 'done');
+    } catch {
+      setRefill('error');
+    }
+  }, [id, flush, applyPatch]);
+
+  const ready = movie !== null && movie.id === id;
+
+  // Горячие клавиши карточки (5.11). Последние значения — через ref, чтобы
+  // слушатель вешался один раз.
+  const latest = useRef({ movie, ready, canStep, save, step, isTop });
+  useEffect(() => {
+    latest.current = { movie, ready, canStep, save, step, isTop };
+  });
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const { movie, ready, canStep, save, step, isTop } = latest.current;
+      if (!movie || !isTop() || hasModifier(event) || isTyping(event.target)) return;
+
+      // Листать можно и пока соседняя запись грузится — порядок знает провайдер.
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        const delta = event.key === 'ArrowLeft' ? -1 : 1;
+        if (delta === -1 ? !canStep.prev : !canStep.next) return;
+        event.preventDefault();
+        void step(delta);
+        return;
+      }
+
+      // Оценка и статус — только когда на экране та запись, что открыта.
+      if (!ready || event.repeat) return;
+
+      if (/^[0-9]$/.test(event.key)) {
+        event.preventDefault();
+        void save({ rating: event.key === '0' ? 10 : Number(event.key) });
+        return;
+      }
+
+      // По коду клавиши, а не по букве: в русской раскладке это «ц».
+      if (event.code === 'KeyW') {
+        event.preventDefault();
+        void save({ status: movie.status === 'watched' ? 'none' : 'watched' });
+      }
+    };
+
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
+  const hint = [
+    (canStep.prev || canStep.next) && '← → соседняя',
+    '1–0 оценка',
+    'W смотрел',
+    'Esc закрыть',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <div
-      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+      onMouseDown={(event) => event.target === event.currentTarget && closeNow()}
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-bg/80 p-4 sm:p-8"
     >
       <div
@@ -159,7 +282,7 @@ export function MovieCard({
           <span className="flex-1" />
           <button
             type="button"
-            onClick={onClose}
+            onClick={closeNow}
             aria-label="Закрыть"
             className="text-text-3 transition-colors duration-[120ms] hover:text-text"
           >
@@ -172,12 +295,22 @@ export function MovieCard({
         {!movie ? (
           <p className="py-10 text-text-3">Загружаю карточку</p>
         ) : (
-          <>
-            <Body movie={movie} save={save} />
-            <SaveBar saveState={saveState} onSave={handleSaveClick} />
-          </>
+          <div inert={!ready} className={ready ? undefined : 'opacity-60'}>
+            <Body key={movie.id} movie={movie} save={save} />
+            <SaveBar
+              saveState={saveState}
+              onSave={handleSaveClick}
+              refill={refill}
+              onRefill={() => setRefill('confirm')}
+            />
+            <p className="mt-4 hidden text-[11px] text-text-4 min-[600px]:block">{hint}</p>
+          </div>
         )}
       </div>
+
+      {refill === 'confirm' && (
+        <ConfirmRefill onConfirm={() => void runRefill()} onCancel={() => setRefill('idle')} />
+      )}
     </div>
   );
 }
@@ -185,24 +318,52 @@ export function MovieCard({
 /**
  * Строка с кнопкой «Сохранить» в самом конце карточки (п.1–4): обычный
  * элемент потока, без подложки и без sticky — прокрутил до конца, нажал.
+ * Слева — «Перезаполнить из API» (2.2) и строка статуса.
  */
 function SaveBar({
   saveState,
   onSave,
+  refill,
+  onRefill,
 }: {
-  saveState: 'idle' | 'saving' | 'saved' | 'error';
+  saveState: SaveState;
   onSave: () => void;
+  refill: RefillState;
+  onRefill: () => void;
 }) {
+  const refillNotice =
+    refill === 'done' ? (
+      <span className="text-text-3">Обновлено</span>
+    ) : refill === 'kpFailed' ? (
+      <Warning text="Обновлено, но Кинопоиск не ответил — оценки КП и IMDb прежние" />
+    ) : refill === 'error' ? (
+      <Warning text="Не удалось обновить" />
+    ) : null;
+
   return (
-    <div className="mt-5 flex items-center gap-3">
+    <div className="mt-5 flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        onClick={onRefill}
+        disabled={refill === 'running'}
+        className="inline-flex items-center gap-[7px] rounded-pill bg-surface-3 px-[18px] py-[9px] text-[12.5px] font-medium whitespace-nowrap transition-colors duration-[120ms] hover:bg-surface-2 disabled:opacity-60"
+      >
+        <RefreshCw size={15} strokeWidth={1.5} />
+        {refill === 'running' ? 'Обновляю…' : 'Перезаполнить из API'}
+      </button>
+
       <span className="flex items-center gap-[6px] text-[12px]">
-        {saveState === 'saving' && <span className="text-text-3">Сохраняю…</span>}
-        {saveState === 'saved' && <span className="text-text-3">Сохранено</span>}
-        {saveState === 'error' && (
-          <span className="flex items-center gap-[6px] text-text-2">
-            <AlertCircle size={13} strokeWidth={1.5} />
-            Не сохранилось, попробуй ещё раз
-          </span>
+        {refillNotice ?? (
+          <>
+            {saveState === 'saving' && <span className="text-text-3">Сохраняю…</span>}
+            {saveState === 'saved' && <span className="text-text-3">Сохранено</span>}
+            {saveState === 'error' && (
+              <span className="flex items-center gap-[6px] text-text-2">
+                <AlertCircle size={13} strokeWidth={1.5} />
+                Не сохранилось, попробуй ещё раз
+              </span>
+            )}
+          </>
         )}
       </span>
 
@@ -216,6 +377,57 @@ function SaveBar({
       >
         {saveState === 'saving' ? 'Сохраняю…' : 'Сохранить'}
       </button>
+    </div>
+  );
+}
+
+function Warning({ text }: { text: string }) {
+  return (
+    <span className="flex items-center gap-[6px] text-text-2">
+      <AlertCircle size={13} strokeWidth={1.5} className="shrink-0 text-orange" />
+      {text}
+    </span>
+  );
+}
+
+/** Своё окно подтверждения в стиле карточки — не window.confirm. */
+function ConfirmRefill({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  useLayer(LAYER.dialog, true, onCancel);
+
+  return (
+    <div
+      onMouseDown={(event) => event.target === event.currentTarget && onCancel()}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-bg/80 p-4"
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="refill-title"
+        className="w-full max-w-[420px] rounded-lg border border-line bg-surface p-5 sm:p-[22px]"
+      >
+        <p id="refill-title" className="text-[15px] font-bold">
+          Перезаполнить из TMDB и Кинопоиска?
+        </p>
+        <p className="mt-2 text-text-2">Перезапишет все поля, кроме личных и сведений о файле.</p>
+
+        <div className="mt-5 flex flex-wrap justify-end gap-3">
+          <button
+            type="button"
+            autoFocus
+            onClick={onCancel}
+            className="rounded-pill bg-surface-3 px-[18px] py-[9px] text-[12.5px] font-medium transition-colors duration-[120ms] hover:bg-surface-2"
+          >
+            Отмена
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="rounded-pill bg-red px-[18px] py-[9px] text-[12.5px] font-medium text-white transition-colors duration-[120ms] hover:bg-red-hover"
+          >
+            Перезаполнить
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -541,17 +753,12 @@ function ListPicker({ movieId }: { movieId: number }) {
     const onPointer = (event: MouseEvent) => {
       if (!box.current?.contains(event.target as Node)) setOpen(false);
     };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
 
     document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
+    return () => document.removeEventListener('mousedown', onPointer);
   }, [open]);
+
+  useLayer(LAYER.dialog, open, () => setOpen(false));
 
   const toggle = (listId: number) => {
     const list = lists.find((l) => l.id === listId);

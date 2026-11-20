@@ -3,6 +3,8 @@
 import { Check, ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
+import { LAYER, useLayer } from '@/components/layers';
+
 export type SelectOption = { value: string; label: string; hint?: string };
 
 /**
@@ -33,17 +35,12 @@ export function Select({
     const onPointer = (event: MouseEvent) => {
       if (!box.current?.contains(event.target as Node)) setOpen(false);
     };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
 
     document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
+    return () => document.removeEventListener('mousedown', onPointer);
   }, [open]);
+
+  useLayer(LAYER.dropdown, open, () => setOpen(false));
 
   const current = options.find((o) => o.value === value);
 

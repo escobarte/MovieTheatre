@@ -17,6 +17,10 @@ const onest = Onest({
 export const metadata: Metadata = {
   title: 'MOVIE_THEATRE',
   description: 'Персональный каталог фильмов и сериалов',
+  // Next 15 по capable: true пишет только mobile-web-app-capable;
+  // старый apple-тег для установки на iOS добавлен руками.
+  appleWebApp: { capable: true, title: 'Movie_Theatre' },
+  other: { 'apple-mobile-web-app-capable': 'yes' },
 };
 
 export const viewport: Viewport = {

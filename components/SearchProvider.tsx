@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import { hasModifier, isTyping } from './layers';
 import { SearchOverlay } from './SearchOverlay';
 
 type Mode = 'search' | 'add';
@@ -14,18 +15,6 @@ export function useSearch() {
   return useContext(SearchContext);
 }
 
-/** Печатает ли пользователь прямо сейчас — тогда «/» это просто символ. */
-function isTyping(target: EventTarget | null): boolean {
-  const node = target as HTMLElement | null;
-  if (!node) return false;
-  return (
-    node.tagName === 'INPUT' ||
-    node.tagName === 'TEXTAREA' ||
-    node.tagName === 'SELECT' ||
-    node.isContentEditable
-  );
-}
-
 export function SearchProvider({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<Mode | null>(null);
 
@@ -34,7 +23,7 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
   // «/» открывает поиск на любом экране (5.5).
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key !== '/' || hasModifier(event)) return;
       if (isTyping(event.target)) return;
 
       event.preventDefault();
