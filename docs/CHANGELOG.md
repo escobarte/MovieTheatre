@@ -10,6 +10,16 @@
 
 <!-- Новые записи добавляются ниже этой строки, каждая сверху -->
 
+## 2026-11-20 (5)
+Этап 8. `GET /api/export` — вся база одним JSON (только чтение, файл
+`movie-theatre-ГГГГ-ММ-ДД.json`); бокс «Резервная копия» с кнопкой «Скачать
+копию» последним на «Статистике»; `scripts/restore.ts` — восстановление только
+в пустую базу, одной транзакцией. README для владельца, короткий README в корне.
+Файлы: app/api/export/route.ts, lib/backup.ts, lib/db/index.ts,
+lib/collection.ts, app/statistika/page.tsx, components/MovieCard.tsx,
+scripts/restore.ts, docs/README.md, README.md, docs/SPEC.md, docs/STATE.md,
+docs/CLAUDE.md, docs/CHANGELOG.md
+
 ## 2026-11-20 (4)
 Карточка в двух режимах. Обычный: текстовые и числовые поля — текстом
 (дата «20 ноября 2026», объём сериала одной строкой, «Раздача ↗» только для

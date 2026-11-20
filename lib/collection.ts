@@ -181,6 +181,19 @@ export function formatGb(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
+const MONTHS = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+];
+
+/** «2026-11-20» → «20 ноября 2026». */
+export function formatDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  const [, year, month, day] = match;
+  return `${Number(day)} ${MONTHS[Number(month) - 1] ?? ''} ${year}`;
+}
+
 /** «247 записей» / «38 записей». */
 export function entriesWord(n: number): string {
   return plural(n, 'запись', 'записи', 'записей');

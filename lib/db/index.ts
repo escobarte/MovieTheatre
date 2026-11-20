@@ -26,3 +26,9 @@ export function getDb(): LibSQLDatabase<typeof schema> {
   database = drizzle(client, { schema });
   return database;
 }
+
+/** Сам клиент libSQL — для запросов «как есть», мимо Drizzle (экспорт). */
+export function getClient(): Client {
+  getDb();
+  return client!;
+}

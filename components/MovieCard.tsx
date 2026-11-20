@@ -14,7 +14,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Select } from '@/components/catalog/Select';
-import { FILE_STATUS_LABELS, STATUS_DOT, STATUS_LABELS, formatGb, plural } from '@/lib/collection';
+import { FILE_STATUS_LABELS, STATUS_DOT, STATUS_LABELS, formatDate, formatGb, plural } from '@/lib/collection';
 import type { FileStatus, Movie, Status } from '@/lib/db/schema';
 import { type ListField, directorValue, listValue } from '@/lib/movie-patch';
 
@@ -1269,17 +1269,4 @@ function tvVolume(movie: Movie): string | null {
     movie.runtime !== null && `~${movie.runtime} мин серия`,
   ].filter(Boolean);
   return parts.length ? parts.join(', ') : null;
-}
-
-const MONTHS = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
-];
-
-/** «2026-11-20» → «20 ноября 2026». */
-function formatDate(value: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return value;
-  const [, year, month, day] = match;
-  return `${Number(day)} ${MONTHS[Number(month) - 1] ?? ''} ${year}`;
 }

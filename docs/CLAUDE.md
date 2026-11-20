@@ -43,7 +43,8 @@ app/
   statistika/page.tsx   статистика
   api/                  auth/[...nextauth], movies, movies/[id],
                         movies/[id]/refill, search, lists, lists/[id],
-                        lists/[id]/items, views, disks, disks/[id]
+                        lists/[id]/items, views, disks, disks/[id],
+                        export (вся база одним JSON, только чтение)
 components/             SiteShell, Header, FocusRing, layers (Esc по слоям,
                         защита клавиш от полей ввода), url-state (карточка
                         и поиск в адресе: ?m=, ?search=), CollectionProvider,
@@ -53,12 +54,16 @@ components/             SiteShell, Header, FocusRing, layers (Esc по слоя�
                         catalog/FilterSelect, catalog/PickOne, catalog/Select
 lib/                    tmdb, kinopoisk, merge, filters, query, collection,
                         search, stats, movie-patch (разбор и проверка правки
-                        записи для PATCH), db/schema, db/index
+                        записи для PATCH), backup (формат резервной копии),
+                        db/schema, db/index
 drizzle/                0000_init.sql, 0001_disks.sql
+scripts/restore.ts      восстановление из копии в пустую базу
+                        (npx tsx scripts/restore.ts файл.json)
 public/                 icon-192, icon-512, icon-maskable-512 (PNG)
 assets/                 макеты интерфейса (только справка); pwa/ — исходники
                         иконки в SVG, буквы в кривых
-docs/                   SPEC, CLAUDE, STATE, CHANGELOG, README
+docs/                   SPEC, CLAUDE, STATE, CHANGELOG, README (для владельца:
+                        устройство, переменные, копии, восстановление)
 ```
 
 Правила, которые держат проект: коллекция грузится один раз за сессию облегчённой выдачей, фильтры и поиск работают в памяти; полная запись приходит отдельным запросом `GET /api/movies/[id]`; внешние API вызываются только с сервера; метаданные тянутся один раз при добавлении.

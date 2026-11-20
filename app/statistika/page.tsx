@@ -1,14 +1,16 @@
 'use client';
 
-import { Film, Library, Star, Tv } from 'lucide-react';
+import { DatabaseBackup, Download, Film, Library, Star, Tv } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useCard } from '@/components/CardProvider';
 import { useCollection } from '@/components/CollectionProvider';
 import { useDisks } from '@/components/DisksProvider';
-import { entriesWord, formatGb, plural, type Entry } from '@/lib/collection';
+import { useLists } from '@/components/ListsProvider';
+import { backupDate } from '@/lib/backup';
+import { entriesWord, formatDate, formatGb, plural, type Entry } from '@/lib/collection';
 import { QP, catalogHref } from '@/lib/query';
 import {
   byDecade,
@@ -25,7 +27,8 @@ import {
  * Статистика (5.10). Всё считается в памяти по уже загруженной коллекции.
  * Разделы — в боксах --panel-sky, графики и иконки — вторичной палитрой
  * (--sky/--violet/--st-watching): по 6.4 красный отдан действиям, а жёлтый
- * только звезде рейтинга.
+ * только звезде рейтинга. Последний бокс — резервная копия базы (SPEC 9),
+ * он есть и при пустой коллекции: списки и диски тоже стоит сохранять.
  */
 export default function StatsPage() {
   const { entries, loading, error } = useCollection();
@@ -52,6 +55,9 @@ export default function StatsPage() {
       <div className="py-24 text-center">
         <h1 className="text-[22px] font-bold">Статистика</h1>
         <p className="mt-2 text-text-2">Считать пока нечего — коллекция пуста.</p>
+        <div className="mt-10 text-left">
+          <BackupPanel entries={0} />
+        </div>
       </div>
     );
   }
@@ -198,6 +204,8 @@ export default function StatsPage() {
           </div>
         )}
       </Panel>
+
+      <BackupPanel entries={entries.length} />
     </div>
   );
 }
@@ -212,15 +220,132 @@ function scale(value: number, all: number[]): number {
 }
 
 /** Бокс раздела (п.3 правок «больше цвета») — тот же вид, что у полки Главной. */
-function Panel({ title, children }: { title?: string; children: React.ReactNode }) {
+function Panel({
+  title,
+  icon: Icon,
+  iconColor,
+  children,
+}: {
+  title?: string;
+  icon?: LucideIcon;
+  iconColor?: string;
+  children: React.ReactNode;
+}) {
   return (
     <section
       className="mt-[20px] rounded-lg border p-[20px]"
       style={{ background: 'var(--panel-sky)', borderColor: 'var(--panel-sky-line)' }}
     >
-      {title && <h2 className="text-[17px] font-bold">{title}</h2>}
+      {title && (
+        <h2 className="flex items-center gap-[10px] text-[17px] font-bold">
+          {Icon && <Icon size={18} strokeWidth={1.5} className="shrink-0" style={{ color: iconColor }} />}
+          {title}
+        </h2>
+      )}
       <div className={title ? 'mt-4' : undefined}>{children}</div>
     </section>
+  );
+}
+
+/* ─── Резервная копия (SPEC 9) ───────────────────────────────────────── */
+
+/** Дата последней копии с этого устройства, «2026-11-20». */
+const LAST_BACKUP_KEY = 'mt:last-backup';
+
+function readLastBackup(): string | null {
+  try {
+    return localStorage.getItem(LAST_BACKUP_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function BackupPanel({ entries }: { entries: number }) {
+  const { lists, views } = useLists();
+  const { disks } = useDisks();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [last, setLast] = useState<string | null>(null);
+
+  // localStorage есть только в браузере: читаем после монтирования.
+  useEffect(() => setLast(readLastBackup()), []);
+
+  // Это обычная ссылка на /api/export с download: файл скачивается и без
+  // скриптов. Со скриптами — тот же файл через fetch, чтобы показать
+  // «Готовлю…» и запомнить дату только после удачной загрузки.
+  async function download(event: React.MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/export', { cache: 'no-store' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? res.statusText);
+      }
+      const blob = await res.blob();
+      const header = res.headers.get('Content-Disposition') ?? '';
+      const name = /filename="([^"]+)"/.exec(header)?.[1] ?? `movie-theatre-${backupDate()}.json`;
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
+      const today = backupDate();
+      try {
+        localStorage.setItem(LAST_BACKUP_KEY, today);
+      } catch {
+        // Без хранилища дата просто не запомнится.
+      }
+      setLast(today);
+    } catch (err) {
+      setError((err as Error).message || 'не удалось');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const counts = [
+    `${entries} ${entriesWord(entries)}`,
+    `${lists.length} ${plural(lists.length, 'список', 'списка', 'списков')}`,
+    `${views.length} ${plural(views.length, 'фильтр', 'фильтра', 'фильтров')}`,
+    `${disks.length} ${plural(disks.length, 'диск', 'диска', 'дисков')}`,
+  ].join(' · ');
+
+  return (
+    <Panel title="Резервная копия" icon={DatabaseBackup} iconColor="var(--sky)">
+      <p className="text-[13px] text-text-2">
+        Вся база одним файлом. Раз в месяц скачивай и храни вне Vercel и Turso — на своём диске
+        или в облаке.
+      </p>
+      <p className="mt-2 text-[12px] text-text-3">{counts}</p>
+
+      <a
+        href="/api/export"
+        download
+        onClick={download}
+        aria-busy={busy}
+        className="mt-4 inline-flex items-center gap-[7px] rounded-pill bg-red px-[18px] py-[9px] text-[12.5px] font-medium whitespace-nowrap text-white transition-colors duration-[120ms] hover:bg-red-hover"
+      >
+        <Download size={15} strokeWidth={1.5} />
+        {busy ? 'Готовлю…' : 'Скачать копию'}
+      </a>
+
+      {error && <p className="mt-2 text-[12px] text-text-2">Не скачалось: {error}</p>}
+
+      <p className="mt-3 text-[12px] text-text-3">
+        {last
+          ? `Последняя копия с этого устройства: ${formatDate(last)}`
+          : 'С этого устройства копий ещё не было'}
+      </p>
+    </Panel>
   );
 }
 
