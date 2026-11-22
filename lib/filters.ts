@@ -7,7 +7,7 @@ import {
   type FileStatus,
   type Status,
 } from './collection';
-import { QP } from './query';
+import { NO_DISK, QP } from './query';
 
 /**
  * Отбор и сортировка идут целиком в памяти (5.4). Логика одна на весь экран:
@@ -128,8 +128,9 @@ export function valuesOf(entry: Entry, category: ListCategory): string[] {
     case 'file':
       return [entry.fileStatus];
     // Хранилище заменил диск: он выбирается из заведённых, а не пишется руками.
+    // Без диска (и «сироты», у них diskId уже null) — отдельное значение.
     case 'disk':
-      return entry.diskId === null ? [] : [String(entry.diskId)];
+      return entry.diskId === null ? [NO_DISK] : [String(entry.diskId)];
     case 'quality':
       return entry.quality ? [entry.quality] : [];
     case 'runtime': {
@@ -156,6 +157,8 @@ export function labelOf(category: ListCategory, value: string): string {
       return RUNTIME_BUCKETS.find((b) => b.value === value)?.label ?? value;
     case 'genre':
       return value.charAt(0).toUpperCase() + value.slice(1);
+    case 'disk':
+      return value === NO_DISK ? 'Без диска' : value;
     default:
       return value;
   }

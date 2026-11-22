@@ -24,6 +24,13 @@ export const QP = {
   sort: 'sort',
 } as const;
 
+/**
+ * Значение фильтра «Диск» для записей без диска: diskId пуст или указывает
+ * на диск, которого уже нет (коллекция отдаёт таких «сирот» с null).
+ * У настоящих дисков значения — числовые id, так что пересечься не может.
+ */
+export const NO_DISK = 'none';
+
 /** Ссылка на каталог с уже включённым условием. */
 export function catalogHref(params: Record<string, string>): string {
   const search = new URLSearchParams(params).toString();

@@ -11,7 +11,7 @@ import { useDisks } from '@/components/DisksProvider';
 import { useLists } from '@/components/ListsProvider';
 import { backupDate } from '@/lib/backup';
 import { entriesWord, formatDate, formatGb, plural, type Entry } from '@/lib/collection';
-import { QP, catalogHref } from '@/lib/query';
+import { NO_DISK, QP, catalogHref } from '@/lib/query';
 import {
   byDecade,
   divergence,
@@ -167,9 +167,30 @@ export default function StatsPage() {
           <p className="text-text-3">Скачанных пока нет</p>
         ) : (
           <>
-            <p className="text-[13px] text-text">Скачано: {downloaded.length}</p>
-            <p className="mt-1 text-[12.5px] text-text-2">на дисках — {downloaded.length - unlinked}</p>
-            {unlinked > 0 && <p className="text-[12.5px] text-text-2">без диска — {unlinked}</p>}
+            <Row
+              className="text-[13px] text-text"
+              href={catalogHref({ [QP.file]: 'have' })}
+            >
+              Скачано: {downloaded.length}
+            </Row>
+            <Row
+              className="mt-1 text-[12.5px] text-text-2"
+              href={
+                disks.length > 0 && downloaded.length - unlinked > 0
+                  ? catalogHref({ [QP.file]: 'have', [QP.disk]: disks.map((d) => d.id).join(',') })
+                  : undefined
+              }
+            >
+              на дисках — {downloaded.length - unlinked}
+            </Row>
+            {unlinked > 0 && (
+              <Row
+                className="text-[12.5px] text-text-2"
+                href={catalogHref({ [QP.file]: 'have', [QP.disk]: NO_DISK })}
+              >
+                без диска — {unlinked}
+              </Row>
+            )}
 
             {disks.length === 0 ? (
               <p className="mt-3 text-[12.5px] text-text-3">
@@ -190,7 +211,7 @@ export default function StatsPage() {
                     value={disk.movies}
                     max={Math.max(...disks.map((d) => d.movies), 1)}
                     suffix={`${formatGb(disk.usedGb)} из ${formatGb(disk.sizeGb)} ГБ`}
-                    href={`/diski/${disk.id}`}
+                    href={disk.movies > 0 ? catalogHref({ [QP.disk]: String(disk.id) }) : undefined}
                   />
                 ))}
               </div>
@@ -397,6 +418,28 @@ function Tile({
       className="block rounded-sm border border-line bg-surface p-[13px] transition-colors duration-[120ms] hover:bg-surface-2"
     >
       {body}
+    </Link>
+  );
+}
+
+/** Строка-число: при нуле или без цели — простой текст, иначе ссылка в каталог. */
+function Row({
+  className,
+  href,
+  children,
+}: {
+  className: string;
+  href?: string;
+  children: React.ReactNode;
+}) {
+  if (!href) return <p className={className}>{children}</p>;
+
+  return (
+    <Link
+      href={href}
+      className={`block cursor-pointer rounded-sm transition-colors duration-[120ms] hover:bg-surface-2 ${className}`}
+    >
+      {children}
     </Link>
   );
 }

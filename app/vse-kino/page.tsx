@@ -12,6 +12,7 @@ import { useDisks } from '@/components/DisksProvider';
 import { useLists } from '@/components/ListsProvider';
 import { Poster } from '@/components/Poster';
 import { entriesWord, STATUS_DOT, type Entry, type Status } from '@/lib/collection';
+import { NO_DISK } from '@/lib/query';
 import {
   EMPTY,
   RATING_SOURCES,
@@ -524,7 +525,13 @@ function options(
       label: titles?.get(value) ?? labelOf(category, value),
       count,
     }))
-    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ru'));
+    .sort(
+      (a, b) =>
+        // «Без диска» — первым пунктом, остальные по частоте.
+        Number(b.value === NO_DISK) - Number(a.value === NO_DISK) ||
+        b.count - a.count ||
+        a.label.localeCompare(b.label, 'ru'),
+    );
 }
 
 function Toggle({
