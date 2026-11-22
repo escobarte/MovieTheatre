@@ -65,6 +65,8 @@ export default function StatsPage() {
   const { totals: sum, ratings, decades, divergence: gap } = stats;
   const rated = entries.filter((e) => e.rating !== null).length;
   const downloaded = entries.filter((e) => e.fileStatus === 'have');
+  // diskId «сироты» (диска уже нет) коллекция отдаёт как null — такие записи
+  // тоже попадают в «без диска».
   const unlinked = downloaded.filter((e) => e.diskId === null).length;
 
   return (
@@ -161,31 +163,39 @@ export default function StatsPage() {
       </Panel>
 
       <Panel title="Сколько скачано и на каких дисках">
-        <p className="text-text-2">
-          {downloaded.length} {plural(downloaded.length, 'запись лежит', 'записи лежат', 'записей лежат')} на диске
-        </p>
+        {downloaded.length === 0 ? (
+          <p className="text-text-3">Скачанных пока нет</p>
+        ) : (
+          <>
+            <p className="text-[13px] text-text">Скачано: {downloaded.length}</p>
+            <p className="mt-1 text-[12.5px] text-text-2">на дисках — {downloaded.length - unlinked}</p>
+            {unlinked > 0 && <p className="text-[12.5px] text-text-2">без диска — {unlinked}</p>}
 
-        {disks.length > 0 && (
-          <div className="mt-3 flex flex-col gap-[6px]">
-            {disks.map((disk) => (
-              <Bar
-                key={disk.id}
-                label={`Диск ${disk.label}`}
-                value={disk.movies}
-                max={Math.max(...disks.map((d) => d.movies), 1)}
-                suffix={`${formatGb(disk.usedGb)} из ${formatGb(disk.sizeGb)} ГБ`}
-                href={`/diski/${disk.id}`}
-              />
-            ))}
-          </div>
-        )}
-
-        {unlinked > 0 && (
-          <p className="mt-2 text-[11.5px] text-text-3">
-            {unlinked}{' '}
-            {plural(unlinked, 'скачанная запись не привязана', 'скачанные записи не привязаны', 'скачанных записей не привязаны')}{' '}
-            к диску
-          </p>
+            {disks.length === 0 ? (
+              <p className="mt-3 text-[12.5px] text-text-3">
+                Дисков пока нет — заведи их на странице{' '}
+                <Link
+                  href="/diski"
+                  className="underline underline-offset-2 transition-colors duration-[120ms] hover:text-text"
+                >
+                  «Диски»
+                </Link>
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-col gap-[6px]">
+                {disks.map((disk) => (
+                  <Bar
+                    key={disk.id}
+                    label={`Диск ${disk.label}`}
+                    value={disk.movies}
+                    max={Math.max(...disks.map((d) => d.movies), 1)}
+                    suffix={`${formatGb(disk.usedGb)} из ${formatGb(disk.sizeGb)} ГБ`}
+                    href={`/diski/${disk.id}`}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </Panel>
 
