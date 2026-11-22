@@ -65,6 +65,7 @@ export default function StatsPage() {
   const { totals: sum, ratings, decades, divergence: gap } = stats;
   const rated = entries.filter((e) => e.rating !== null).length;
   const downloaded = entries.filter((e) => e.fileStatus === 'have');
+  const unlinked = downloaded.filter((e) => e.diskId === null).length;
 
   return (
     <div className="pb-16">
@@ -161,7 +162,7 @@ export default function StatsPage() {
 
       <Panel title="Сколько скачано и на каких дисках">
         <p className="text-text-2">
-          {downloaded.length} {entriesWord(downloaded.length)} лежит на диске
+          {downloaded.length} {plural(downloaded.length, 'запись лежит', 'записи лежат', 'записей лежат')} на диске
         </p>
 
         {disks.length > 0 && (
@@ -179,10 +180,11 @@ export default function StatsPage() {
           </div>
         )}
 
-        {entries.filter((e) => e.fileStatus === 'have' && e.diskId === null).length > 0 && (
+        {unlinked > 0 && (
           <p className="mt-2 text-[11.5px] text-text-3">
-            {entries.filter((e) => e.fileStatus === 'have' && e.diskId === null).length} скачанных
-            записей не привязаны к диску
+            {unlinked}{' '}
+            {plural(unlinked, 'скачанная запись не привязана', 'скачанные записи не привязаны', 'скачанных записей не привязаны')}{' '}
+            к диску
           </p>
         )}
       </Panel>

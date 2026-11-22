@@ -9,6 +9,7 @@ import {
   Plus,
   RefreshCw,
   Star,
+  Trash2,
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -25,6 +26,7 @@ import { useLists } from './ListsProvider';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 type RefillState = 'idle' | 'confirm' | 'running' | 'done' | 'kpFailed' | 'error';
+type RemovalState = 'idle' | 'confirm' | 'running' | 'error';
 
 /**
  * Карточка записи (5.7). Модальное окно поверх затемнённого экрана — так не
@@ -59,10 +61,13 @@ export function MovieCard({
   closing: boolean;
   onClosed: () => void;
 }) {
-  const { applyPatch } = useCollection();
+  const { applyPatch, removeEntry } = useCollection();
+  const { dropMovie } = useLists();
+  const { reload: reloadDisks } = useDisks();
   const [movie, setMovie] = useState<Movie | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refill, setRefill] = useState<RefillState>('idle');
+  const [removal, setRemoval] = useState<RemovalState>('idle');
   /** Режим правки. Каждое открытие и листание ← → — обычный режим. */
   const [editing, setEditing] = useState(false);
 
@@ -81,6 +86,7 @@ export function MovieCard({
     currentId.current = id;
     setError(null);
     setRefill('idle');
+    setRemoval('idle');
     setSaveState('idle');
     setEditing(false);
 
@@ -255,6 +261,31 @@ export function MovieCard({
     }
   }, [id, flush, applyPatch]);
 
+  /**
+   * Удаление записи (5.7). Сначала дожидаемся идущих сохранений, чтобы PATCH
+   * не ушёл в уже удалённую запись. Успех: карточка закрывается тем же
+   * путём, что и обычно (?m= уходит из адреса), запись пропадает из
+   * коллекции, подборок и сводки дисков в памяти. 404 — записи уже нет,
+   * это тоже успех. Ошибка: окно остаётся, под вопросом строка с причиной.
+   */
+  const runDelete = useCallback(async () => {
+    setRemoval('running');
+    await flush();
+
+    try {
+      const res = await fetch(`/api/movies/${id}`, { method: 'DELETE' });
+      if (!res.ok && res.status !== 404) throw new Error(res.statusText);
+
+      setRemoval('idle');
+      onClose();
+      removeEntry(id);
+      dropMovie(id);
+      void reloadDisks();
+    } catch {
+      setRemoval('error');
+    }
+  }, [id, flush, onClose, removeEntry, dropMovie, reloadDisks]);
+
   const ready = movie !== null && movie.id === id;
 
   // Горячие клавиши карточки (5.11). Последние значения — через ref, чтобы
@@ -353,6 +384,7 @@ export function MovieCard({
                 onSave={() => void finishEditing()}
                 refill={refill}
                 onRefill={() => setRefill('confirm')}
+                onDelete={() => setRemoval('confirm')}
               />
             ) : (
               <div className="mt-5 flex justify-end">
@@ -366,6 +398,15 @@ export function MovieCard({
 
       {refill === 'confirm' && (
         <ConfirmRefill onConfirm={() => void runRefill()} onCancel={() => setRefill('idle')} />
+      )}
+
+      {removal !== 'idle' && (
+        <ConfirmDelete
+          title={movie?.title ?? ''}
+          state={removal}
+          onConfirm={() => void runDelete()}
+          onCancel={() => setRemoval('idle')}
+        />
       )}
     </div>
   );
@@ -381,11 +422,13 @@ function SaveBar({
   onSave,
   refill,
   onRefill,
+  onDelete,
 }: {
   saveState: SaveState;
   onSave: () => void;
   refill: RefillState;
   onRefill: () => void;
+  onDelete: () => void;
 }) {
   const refillNotice =
     refill === 'done' ? (
@@ -398,6 +441,16 @@ function SaveBar({
 
   return (
     <div className="mt-5 flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label="Удалить запись"
+        title="Удалить запись"
+        className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full border border-line-strong text-text-2 transition-colors duration-[120ms] hover:bg-surface-2 hover:text-red"
+      >
+        <Trash2 size={18} strokeWidth={1.5} />
+      </button>
+
       <button
         type="button"
         onClick={onRefill}
@@ -506,6 +559,75 @@ function ConfirmRefill({ onConfirm, onCancel }: { onConfirm: () => void; onCance
             className="rounded-pill bg-red px-[18px] py-[9px] text-[12.5px] font-medium text-white transition-colors duration-[120ms] hover:bg-red-hover"
           >
             Перезаполнить
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Подтверждение удаления записи — своё окно, как у «Перезаполнить». */
+function ConfirmDelete({
+  title,
+  state,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  state: RemovalState;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const running = state === 'running';
+  // Пока идёт запрос, Esc и клик вне окна ничего не отменяют: ответ всё равно придёт.
+  const cancel = () => {
+    if (!running) onCancel();
+  };
+  useLayer(LAYER.dialog, true, cancel);
+
+  return (
+    <div
+      onMouseDown={(event) => event.target === event.currentTarget && cancel()}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-bg/80 p-4"
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-title"
+        aria-describedby="delete-note"
+        className="w-full max-w-[420px] rounded-lg border border-line bg-surface p-5 sm:p-[22px]"
+      >
+        <p id="delete-title" className="text-[15px] font-bold">
+          Удалить «{title}»?
+        </p>
+        <p id="delete-note" className="mt-2 text-[13px] text-text-2">
+          Запись пропадёт из коллекции и из всех списков. Это нельзя отменить.
+        </p>
+
+        {state === 'error' && (
+          <p className="mt-3 flex items-center gap-[6px] text-[12px] text-text-2">
+            <AlertCircle size={13} strokeWidth={1.5} className="shrink-0 text-orange" />
+            Не удалось удалить
+          </p>
+        )}
+
+        <div className="mt-5 flex flex-wrap justify-end gap-3">
+          <button
+            type="button"
+            autoFocus
+            onClick={cancel}
+            disabled={running}
+            className="rounded-pill bg-surface-3 px-[18px] py-[9px] text-[12.5px] font-medium transition-colors duration-[120ms] hover:bg-surface-2 disabled:opacity-60"
+          >
+            Отмена
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={running}
+            className="rounded-pill bg-red px-[18px] py-[9px] text-[12.5px] font-medium text-white transition-colors duration-[120ms] hover:bg-red-hover disabled:opacity-60"
+          >
+            {running ? 'Удаляю…' : 'Удалить'}
           </button>
         </div>
       </div>
@@ -882,7 +1004,12 @@ function DiskField({
   save: (fields: Partial<Movie>) => void;
   editing: boolean;
 }) {
-  const { disks, reload } = useDisks();
+  const { disks, reload, loading, error } = useDisks();
+
+  // Диска нет в списке («сирота» после удаления диска) — показываем «Нет диска».
+  // Пока диски не загрузились или загрузка упала, значение не трогаем.
+  const known =
+    movie.diskId === null || loading || error !== null || disks.some((disk) => disk.id === movie.diskId);
 
   const options = [
     { value: '', label: 'Нет диска' },
@@ -898,7 +1025,7 @@ function DiskField({
       <Select
         label="Диск"
         options={options}
-        value={String(movie.diskId ?? '')}
+        value={known ? String(movie.diskId ?? '') : ''}
         onChange={async (value) => {
           save({ diskId: value ? Number(value) : null });
           await reload();

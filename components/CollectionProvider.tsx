@@ -4,6 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 import { decode, type Entry, type LightRow } from '@/lib/collection';
 
+import { useDisks } from './DisksProvider';
+
 /**
  * Облегчённая коллекция забирается один раз за сессию (5.4). Дальше сервер
  * в фильтрации не участвует — всё считается в памяти. Правки из карточки
@@ -17,6 +19,8 @@ type CollectionState = {
   error: string | null;
   /** Обновить запись в памяти после сохранения в карточке. */
   applyPatch: (id: number, fields: Partial<LightRow>) => void;
+  /** Убрать запись из памяти после удаления в базе. */
+  removeEntry: (id: number) => void;
   reload: () => Promise<void>;
 };
 
@@ -25,6 +29,7 @@ const CollectionContext = createContext<CollectionState>({
   loading: true,
   error: null,
   applyPatch: () => {},
+  removeEntry: () => {},
   reload: async () => {},
 });
 
@@ -35,6 +40,7 @@ export function useCollection() {
 export function CollectionProvider({ children }: { children: React.ReactNode }) {
   const [rows, setRows] = useState<LightRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { disks, loading: disksLoading, error: disksError } = useDisks();
 
   const reload = useCallback(async () => {
     try {
@@ -56,15 +62,31 @@ export function CollectionProvider({ children }: { children: React.ReactNode }) 
     setRows((prev) => prev?.map((row) => (row.id === id ? { ...row, ...fields } : row)) ?? prev);
   }, []);
 
+  const removeEntry = useCallback((id: number) => {
+    setRows((prev) => prev?.filter((row) => row.id !== id) ?? prev);
+  }, []);
+
+  // Запись с diskId, которого нет среди дисков («сирота» после удаления диска),
+  // считается записью без диска. Пока диски не загрузились или загрузка
+  // упала, ничего не трогаем: пустой список не должен «осиротить» всё. В базу
+  // это не пишется.
+  const diskIds = useMemo(
+    () => (disksLoading || disksError ? null : new Set(disks.map((disk) => disk.id))),
+    [disks, disksLoading, disksError],
+  );
+
   const value = useMemo<CollectionState>(
     () => ({
-      entries: (rows ?? []).map(decode),
+      entries: (rows ?? []).map((row) =>
+        decode(diskIds && row.diskId !== null && !diskIds.has(row.diskId) ? { ...row, diskId: null } : row),
+      ),
       loading: rows === null && error === null,
       error,
       applyPatch,
+      removeEntry,
       reload,
     }),
-    [rows, error, applyPatch, reload],
+    [rows, error, diskIds, applyPatch, removeEntry, reload],
   );
 
   return <CollectionContext.Provider value={value}>{children}</CollectionContext.Provider>;

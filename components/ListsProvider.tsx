@@ -26,6 +26,8 @@ type ListsState = {
   deleteList: (id: number) => Promise<void>;
   putItems: (id: number, items: ListItem[]) => Promise<void>;
   addToList: (id: number, movieId: number) => Promise<void>;
+  /** Запись удалена в базе: убрать её из подборок в памяти. */
+  dropMovie: (movieId: number) => void;
   createView: (title: string, query: string) => Promise<void>;
   deleteView: (id: number) => Promise<void>;
 };
@@ -42,6 +44,7 @@ const ListsContext = createContext<ListsState>({
   deleteList: noop,
   putItems: noop,
   addToList: noop,
+  dropMovie: () => {},
   createView: noop,
   deleteView: noop,
 });
@@ -157,6 +160,21 @@ export function ListsProvider({ children }: { children: React.ReactNode }) {
     [lists, putItems],
   );
 
+  const dropMovie = useCallback((movieId: number) => {
+    setLists(
+      (prev) =>
+        prev?.map((list) =>
+          list.items.some((item) => item.movieId === movieId) || list.coverMovieId === movieId
+            ? {
+                ...list,
+                coverMovieId: list.coverMovieId === movieId ? null : list.coverMovieId,
+                items: list.items.filter((item) => item.movieId !== movieId),
+              }
+            : list,
+        ) ?? prev,
+    );
+  }, []);
+
   const createView = useCallback(
     (title: string, query: string) =>
       guard(async () => {
@@ -190,10 +208,11 @@ export function ListsProvider({ children }: { children: React.ReactNode }) {
       deleteList,
       putItems,
       addToList,
+      dropMovie,
       createView,
       deleteView,
     }),
-    [lists, views, error, createList, patchList, deleteList, putItems, addToList, createView, deleteView],
+    [lists, views, error, createList, patchList, deleteList, putItems, addToList, dropMovie, createView, deleteView],
   );
 
   return <ListsContext.Provider value={value}>{children}</ListsContext.Provider>;

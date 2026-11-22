@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { getDb } from '@/lib/db';
-import { movies } from '@/lib/db/schema';
+import { listItems, lists, movies } from '@/lib/db/schema';
 import { normalizePatch } from '@/lib/movie-patch';
 
 export const dynamic = 'force-dynamic';
@@ -109,6 +109,36 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ movie: saved });
   } catch (error) {
     console.error('[api/movies PATCH]', error);
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  }
+}
+
+/**
+ * Удаление записи: строки list_items этой записи и сама запись — одной
+ * транзакцией. Обложка списка, если это была она, сбрасывается явно, не
+ * полагаясь на внешние ключи. Закрыт входом общим middleware (весь /api).
+ */
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const id = Number((await params).id);
+  if (!Number.isInteger(id)) {
+    return NextResponse.json({ error: 'Неверный id' }, { status: 400 });
+  }
+
+  try {
+    const removed = await getDb().transaction(async (tx) => {
+      await tx.delete(listItems).where(eq(listItems.movieId, id));
+      await tx.update(lists).set({ coverMovieId: null }).where(eq(lists.coverMovieId, id));
+      const [row] = await tx.delete(movies).where(eq(movies.id, id)).returning({ id: movies.id });
+      if (!row) tx.rollback();
+      return row;
+    });
+
+    return NextResponse.json({ ok: true, id: removed.id });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'TransactionRollbackError') {
+      return NextResponse.json({ error: 'Запись не найдена' }, { status: 404 });
+    }
+    console.error('[api/movies DELETE]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

@@ -77,16 +77,25 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   try {
     const db = getDb();
 
-    const detached = await db
-      .update(movies)
-      .set({ diskId: null })
-      .where(eq(movies.diskId, id))
-      .returning({ id: movies.id });
+    // Одна транзакция: либо запись отвязана и диск удалён, либо ничего.
+    // Вес (size_gb) у записей остаётся — он про файл, а не про диск.
+    const result = await db.transaction(async (tx) => {
+      const detached = await tx
+        .update(movies)
+        .set({ diskId: null })
+        .where(eq(movies.diskId, id))
+        .returning({ id: movies.id });
 
-    const [removed] = await db.delete(disks).where(eq(disks.id, id)).returning();
-    if (!removed) return NextResponse.json({ error: 'Диск не найден' }, { status: 404 });
+      const [removed] = await tx.delete(disks).where(eq(disks.id, id)).returning();
+      return { removed: Boolean(removed), detached: detached.length };
+    });
 
-    return NextResponse.json({ ok: true, detached: detached.length });
+    // Диска нет, а «осиротевших» записей тоже не нашлось — удалять было нечего.
+    if (!result.removed && result.detached === 0) {
+      return NextResponse.json({ error: 'Диск не найден' }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true, detached: result.detached });
   } catch (error) {
     console.error('[api/disks DELETE]', error);
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });

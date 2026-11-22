@@ -10,6 +10,19 @@
 
 <!-- Новые записи добавляются ниже этой строки, каждая сверху -->
 
+## 2026-11-22
+Диски и удаление записи. Удаление диска — одной транзакцией со сбросом
+`disk_id`, коллекция в памяти сверяет `diskId` со списком дисков («сирота» =
+без диска; диски теперь снаружи коллекции в `SiteShell`). Подписи «Статистики»
+согласованы по числу («1 запись лежит», «2 скачанные записи не привязаны»).
+`DELETE /api/movies/[id]` (транзакция: list_items, обложки списков, запись);
+в карточке в режиме правки — кнопка `Trash2` и окно подтверждения, запись
+убирается из коллекции, подборок и сводки дисков без перезагрузки.
+Файлы: app/api/disks/[id]/route.ts, app/api/movies/[id]/route.ts,
+components/SiteShell.tsx, components/CollectionProvider.tsx,
+components/ListsProvider.tsx, components/MovieCard.tsx,
+app/statistika/page.tsx, docs/SPEC.md, docs/STATE.md, docs/CHANGELOG.md
+
 ## 2026-11-20 (5)
 Этап 8. `GET /api/export` — вся база одним JSON (только чтение, файл
 `movie-theatre-ГГГГ-ММ-ДД.json`); бокс «Резервная копия» с кнопкой «Скачать

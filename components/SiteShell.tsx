@@ -24,9 +24,10 @@ export function SiteShell({
   if (pathname === '/vhod') return children;
 
   return (
-    <CollectionProvider>
-      <ListsProvider>
-        <DisksProvider>
+    // Диски снаружи коллекции: коллекция сверяет diskId записей со списком дисков.
+    <DisksProvider>
+      <CollectionProvider>
+        <ListsProvider>
           <CardProvider>
             <SearchProvider>
               <div className="mx-auto w-full max-w-[1280px] px-[18px]">
@@ -36,8 +37,8 @@ export function SiteShell({
               </div>
             </SearchProvider>
           </CardProvider>
-        </DisksProvider>
-      </ListsProvider>
-    </CollectionProvider>
+        </ListsProvider>
+      </CollectionProvider>
+    </DisksProvider>
   );
 }
