@@ -7,6 +7,7 @@ import { use } from 'react';
 
 import { CardSequence } from '@/components/CardProvider';
 import { useCollection } from '@/components/CollectionProvider';
+import { DiskBar } from '@/components/DiskBar';
 import { useDisks } from '@/components/DisksProvider';
 import { Poster } from '@/components/Poster';
 import { formatGb, plural } from '@/lib/collection';
@@ -30,7 +31,6 @@ export default function DiskPage({ params }: { params: Promise<{ id: string }> }
   if (!disk) return <p className="py-10 text-text-3">Такого диска нет</p>;
 
   const onDisk = entries.filter((entry) => entry.diskId === id);
-  const share = disk.sizeGb > 0 ? Math.min(disk.usedGb / disk.sizeGb, 1) : 0;
 
   return (
     <div className="pb-16">
@@ -100,12 +100,7 @@ export default function DiskPage({ params }: { params: Promise<{ id: string }> }
           </button>
         </div>
 
-        <div className="mt-4 h-[6px] overflow-hidden rounded-pill bg-surface-3">
-          <div
-            className="h-full rounded-pill"
-            style={{ width: `${share * 100}%`, background: share >= 0.9 ? 'var(--orange)' : 'var(--sky)' }}
-          />
-        </div>
+        <DiskBar disk={disk} className="mt-4" />
 
         <div className="mt-[6px] flex flex-wrap items-baseline gap-x-3 text-[11.5px]">
           <span className="text-text-2">

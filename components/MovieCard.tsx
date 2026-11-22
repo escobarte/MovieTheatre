@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   Check,
+  HardDrive,
   Image as ImageIcon,
   Pencil,
   Play,
@@ -10,8 +11,10 @@ import {
   RefreshCw,
   Star,
   Trash2,
+  UserRound,
   X,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Select } from '@/components/catalog/Select';
@@ -821,7 +824,7 @@ function Body({
         </div>
       </div>
 
-      <Block title="Личное">
+      <Block title="Личное" icon={UserRound} iconColor="var(--violet)">
         <Row label="Статус">
           <Pills
             options={Object.entries(STATUS_LABELS)
@@ -909,7 +912,7 @@ function Body({
         </Row>
       </Block>
 
-      <Block title="Файл">
+      <Block title="Файл" icon={HardDrive} iconColor="var(--sky)">
         <Row label="Статус">
           <Select
             label="Статус"
@@ -1183,11 +1186,25 @@ function ListPicker({ movieId }: { movieId: number }) {
 
 /* ─── Кусочки ────────────────────────────────────────────────────────── */
 
-function Block({ title, children }: { title: string; children: React.ReactNode }) {
+/** Блок «Личное» / «Файл»: заголовок с цветной иконкой, чтобы не сливался с подписями полей. */
+function Block({
+  title,
+  icon: Icon,
+  iconColor,
+  children,
+}: {
+  title: string;
+  icon: LucideIcon;
+  iconColor: string;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="mt-5 border-t border-line pt-4">
-      <h3 className="text-[11px] font-medium tracking-[.1em] text-text-4 uppercase">{title}</h3>
-      <dl className="mt-3 flex flex-col gap-[10px]">{children}</dl>
+    <section className="mt-5 border-t border-line pt-[20px]">
+      <h3 className="flex items-center gap-[8px] text-[13px] font-bold tracking-[.08em] text-text uppercase">
+        <Icon size={16} strokeWidth={1.5} className="shrink-0" style={{ color: iconColor }} />
+        {title}
+      </h3>
+      <dl className="mt-[16px] flex flex-col gap-[10px]">{children}</dl>
     </section>
   );
 }

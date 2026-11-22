@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useCard } from '@/components/CardProvider';
 import { useCollection } from '@/components/CollectionProvider';
+import { DiskBar } from '@/components/DiskBar';
 import { useDisks } from '@/components/DisksProvider';
 import { useLists } from '@/components/ListsProvider';
 import { backupDate } from '@/lib/backup';
@@ -204,13 +205,21 @@ export default function StatsPage() {
               </p>
             ) : (
               <div className="mt-3 flex flex-col gap-[6px]">
+                {/* Порядок и заполнение — из той же сводки, что на «Дисках». */}
                 {disks.map((disk) => (
                   <Bar
                     key={disk.id}
                     label={`Диск ${disk.label}`}
                     value={disk.movies}
-                    max={Math.max(...disks.map((d) => d.movies), 1)}
-                    suffix={`${formatGb(disk.usedGb)} из ${formatGb(disk.sizeGb)} ГБ`}
+                    meter={<DiskBar disk={disk} className="min-w-[60px] flex-1" />}
+                    suffix={
+                      <>
+                        {formatGb(disk.usedGb)} из {formatGb(disk.sizeGb)} ГБ
+                        {disk.moviesWithoutSize > 0 && (
+                          <span className="ml-2 text-[11px]">подсчёт неполный</span>
+                        )}
+                      </>
+                    }
                     href={disk.movies > 0 ? catalogHref({ [QP.disk]: String(disk.id) }) : undefined}
                   />
                 ))}
@@ -444,39 +453,53 @@ function Row({
   );
 }
 
+/**
+ * Строка с полосой. По умолчанию полоса — value / max; meter подменяет её
+ * своей (у дисков — заполнение диска, а не доля записей).
+ */
 function Bar({
   label,
   value,
-  max,
+  max = 1,
+  meter,
   suffix,
   href,
 }: {
   label: string;
   value: number;
-  max: number;
-  suffix?: string;
+  max?: number;
+  meter?: React.ReactNode;
+  suffix?: React.ReactNode;
   href?: string;
 }) {
   const content = (
     <>
       <span className="w-[110px] shrink-0 truncate text-[12px] text-text-2">{label}</span>
-      <span className="h-[6px] flex-1 overflow-hidden rounded-pill bg-surface-3">
-        <span
-          className="block h-full rounded-pill bg-sky"
-          style={{ width: `${(value / Math.max(max, 1)) * 100}%` }}
-        />
-      </span>
+      {meter ?? (
+        <span className="h-[6px] min-w-[60px] flex-1 overflow-hidden rounded-pill bg-surface-3">
+          <span
+            className="block h-full rounded-pill bg-sky"
+            style={{ width: `${(value / Math.max(max, 1)) * 100}%` }}
+          />
+        </span>
+      )}
       <span className="w-[36px] shrink-0 text-right text-[11.5px] text-text-3">{value}</span>
-      {suffix && <span className="text-[11.5px] text-text-3">{suffix}</span>}
+      {/* Ширина подписи постоянная, чтобы полосы соседних строк были одной длины. */}
+      {suffix && (
+        <span className="text-[11.5px] whitespace-nowrap text-text-3 min-[600px]:w-[210px] min-[600px]:shrink-0">
+          {suffix}
+        </span>
+      )}
     </>
   );
 
-  if (!href) return <div className="flex items-center gap-3">{content}</div>;
+  // На узком экране подпись справа переносится под полосу, а не выдавливает страницу вбок.
+  if (!href) return <div className="flex flex-wrap items-center gap-x-3 gap-y-1">{content}</div>;
 
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 rounded-sm transition-colors duration-[120ms] hover:bg-surface-2"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-sm transition-colors duration-[120ms] hover:bg-surface-2"
     >
       {content}
     </Link>

@@ -4,6 +4,7 @@ import { AlertCircle, HardDrive, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
+import { DiskBar } from '@/components/DiskBar';
 import { useDisks, type Disk } from '@/components/DisksProvider';
 import { formatGb, plural } from '@/lib/collection';
 
@@ -125,9 +126,6 @@ export default function DisksPage() {
 }
 
 function DiskRow({ disk }: { disk: Disk }) {
-  const share = disk.sizeGb > 0 ? Math.min(disk.usedGb / disk.sizeGb, 1) : 0;
-  const fill = share >= 0.9 ? 'var(--orange)' : 'var(--sky)';
-
   return (
     <Link
       href={`/diski/${disk.id}`}
@@ -148,9 +146,7 @@ function DiskRow({ disk }: { disk: Disk }) {
         </span>
       </div>
 
-      <div className="mt-[9px] h-[6px] overflow-hidden rounded-pill bg-surface-3">
-        <div className="h-full rounded-pill" style={{ width: `${share * 100}%`, background: fill }} />
-      </div>
+      <DiskBar disk={disk} className="mt-[9px]" />
 
       <div className="mt-[6px] flex flex-wrap items-baseline gap-x-3 text-[11.5px]">
         <span className="font-medium text-text">свободно {formatGb(disk.freeGb)} ГБ</span>
