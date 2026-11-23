@@ -21,6 +21,9 @@
   --red:        #E5142B;
   --red-hover:  #FF2740;
   --gold:       #F5B01A;
+  /* Горчичный — исключение из 6.4: только текст ссылки «На Главную» в панели
+     после добавления (карточка, 5.7). Не жёлтый рейтинга и нигде больше. */
+  --mustard:    #D9A441;
 
   /* Цвета статусов просмотра — только точка перед подписью и полоска
      прогресса (6.4), текст статуса не красится. */
@@ -67,6 +70,7 @@
   --color-red:       var(--red);
   --color-red-hover: var(--red-hover);
   --color-gold:      var(--gold);
+  --color-mustard:   var(--mustard);
 
   --color-st-watching: var(--st-watching);
   --color-st-watched:  var(--st-watched);

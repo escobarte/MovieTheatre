@@ -363,18 +363,21 @@ export function MovieCard({
         aria-label={movie?.title ?? 'Карточка записи'}
         className="w-full max-w-[880px] rounded-lg bg-surface p-5 sm:p-[22px]"
       >
-        <div className="flex items-start gap-4">
-          {justAdded && <AddedBar onAddMore={addMore} />}
-          <span className="flex-1" />
-          <button
-            type="button"
-            onClick={closeNow}
-            aria-label="Закрыть"
-            className="text-text-3 transition-colors duration-[120ms] hover:text-text"
-          >
-            <X size={19} strokeWidth={1.5} />
-          </button>
-        </div>
+        {justAdded ? (
+          <AddedBar onAddMore={addMore} onClose={closeNow} />
+        ) : (
+          <div className="flex items-start gap-4">
+            <span className="flex-1" />
+            <button
+              type="button"
+              onClick={closeNow}
+              aria-label="Закрыть"
+              className="text-text-3 transition-colors duration-[120ms] hover:text-text"
+            >
+              <X size={19} strokeWidth={1.5} />
+            </button>
+          </div>
+        )}
 
         {error && <p className="mt-2 text-text-2">Ошибка: {error}</p>}
 
@@ -418,18 +421,28 @@ export function MovieCard({
 }
 
 /**
- * Верхняя строка карточки сразу после добавления (5.8): «Добавлено» и две
- * кнопки-ссылки. «На Главную» — обычная ссылка, но сначала снимает слои из
- * адреса: карточка и поиск читают адрес из истории, и сам переход их бы не
- * закрыл. «Добавить ещё» закрывает карточку и открывает поиск с пустым полем.
+ * Верхняя панель карточки сразу после добавления (5.7): статус «Добавлено»,
+ * «На Главную», «Добавить ещё» и крестик. От 600px — одна строка высотой 32px;
+ * уже — две: «Добавлено» и крестик, под ними две равные кнопки по 36px
+ * (в одну строку на 360px всё не помещается).
+ *
+ * «На Главную» — обычная ссылка, но сначала снимает слои из адреса: карточка
+ * и поиск читают адрес из истории, и сам переход их бы не закрыл.
+ * «Добавить ещё» закрывает карточку и открывает поиск с пустым полем.
  */
-function AddedBar({ onAddMore }: { onAddMore: () => void }) {
-  const link =
-    'rounded-xs text-[12.5px] font-medium text-text-2 transition-colors duration-[120ms] hover:text-text';
+function AddedBar({ onAddMore, onClose }: { onAddMore: () => void; onClose: () => void }) {
+  const label = 'text-[13px] leading-none font-medium whitespace-nowrap';
+  const pill = `${label} inline-flex h-[36px] items-center justify-center gap-[6px] rounded-pill px-[10px] transition-colors duration-[120ms] min-[600px]:h-[32px] min-[600px]:px-[14px]`;
 
   return (
-    <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1 pt-[1px]">
-      <p className="text-[13px] font-medium">Добавлено</p>
+    <div className="mb-4 grid grid-cols-2 items-center gap-x-2 gap-y-[10px] border-b border-line pb-3 min-[600px]:flex min-[600px]:flex-nowrap min-[600px]:gap-[6px]">
+      <p className={`${label} col-start-1 row-start-1 flex h-[32px] items-center gap-[8px] text-st-watched`}>
+        <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full bg-st-watched/15">
+          <Check size={13} strokeWidth={2} />
+        </span>
+        Добавлено
+      </p>
+
       <Link
         href="/"
         onClick={(event) => {
@@ -443,12 +456,28 @@ function AddedBar({ onAddMore }: { onAddMore: () => void }) {
             window.scrollTo(0, 0);
           }
         }}
-        className={link}
+        className={`${pill} col-start-1 row-start-2 border border-text text-mustard hover:border-white`}
       >
         На Главную
       </Link>
-      <button type="button" onClick={onAddMore} className={link}>
+
+      <button
+        type="button"
+        onClick={onAddMore}
+        className={`${pill} col-start-2 row-start-2 bg-red text-white hover:bg-red-hover`}
+      >
+        <Plus size={14} strokeWidth={1.5} className="shrink-0" />
         Добавить ещё
+      </button>
+
+      {/* 32px на глаз, 40px под палец — за счёт невидимого края. */}
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Закрыть"
+        className="relative col-start-2 row-start-1 flex h-[32px] w-[32px] shrink-0 items-center justify-center justify-self-end rounded-full border border-line-strong text-text-3 transition-colors duration-[120ms] after:absolute after:-inset-[5px] after:content-[''] hover:bg-surface-2 min-[600px]:ml-auto"
+      >
+        <X size={16} strokeWidth={1.5} />
       </button>
     </div>
   );
