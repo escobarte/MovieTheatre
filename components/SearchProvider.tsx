@@ -1,10 +1,10 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { hasModifier, isTyping } from './layers';
 import { SearchOverlay } from './SearchOverlay';
-import { URL_PARAM, pushParam, replaceParam, useCloseParam, useUrlParam } from './url-state';
+import { ADD_MORE, URL_PARAM, pushParam, replaceParam, useCloseParam, useUrlParam } from './url-state';
 
 type Mode = 'search' | 'add';
 
@@ -34,6 +34,27 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const close = useCloseParam(URL_PARAM.search, 'mtSearch', param);
+
+  // «Добавить ещё» из карточки (5.8): ждём, пока карточка уйдёт из адреса
+  // (её закрытие может идти через history.back — это не мгновенно), затем
+  // открываем добавление заново. Новый key пересоздаёт оверлей: поле пустое,
+  // фокус в нём, прежняя выдача и поп-ап не остаются.
+  const card = useUrlParam(URL_PARAM.card);
+  const [addMore, setAddMore] = useState(false);
+  const [fresh, setFresh] = useState(0);
+
+  useEffect(() => {
+    const onAddMore = () => setAddMore(true);
+    window.addEventListener(ADD_MORE, onAddMore);
+    return () => window.removeEventListener(ADD_MORE, onAddMore);
+  }, []);
+
+  useEffect(() => {
+    if (!addMore || card !== null) return;
+    setAddMore(false);
+    setFresh((n) => n + 1);
+    openSearch('add');
+  }, [addMore, card, openSearch]);
 
   // «/» открывает поиск на любом экране (5.5).
   useEffect(() => {
@@ -65,7 +86,7 @@ export function SearchProvider({ children }: { children: React.ReactNode }) {
   return (
     <SearchContext.Provider value={value}>
       {children}
-      {mode && <SearchOverlay mode={mode} onClose={close} />}
+      {mode && <SearchOverlay key={fresh} mode={mode} onClose={close} />}
     </SearchContext.Provider>
   );
 }

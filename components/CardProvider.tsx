@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 import { MovieCard } from './MovieCard';
-import { URL_PARAM, pushParam, replaceParam, useCloseParam, useUrlParam } from './url-state';
+import { URL_PARAM, pushParam, replaceParam, swapParam, useCloseParam, useUrlParam } from './url-state';
 
 /**
  * Одна карточка на всё приложение: её открывает любой постер — в сетке,
@@ -59,8 +59,11 @@ export function CardProvider({ children }: { children: React.ReactNode }) {
       justAdded: options?.justAdded ?? false,
       sequence: options?.sequence ?? [],
     });
-    const alreadyOpen = new URLSearchParams(window.location.search).has(URL_PARAM.card);
-    if (alreadyOpen) replaceParam(URL_PARAM.card, String(next));
+    const search = new URLSearchParams(window.location.search);
+    if (search.has(URL_PARAM.card)) replaceParam(URL_PARAM.card, String(next));
+    // Добавили из поп-апа предпросмотра — карточка встаёт на его место (5.8).
+    else if (search.has(URL_PARAM.preview))
+      swapParam(URL_PARAM.preview, 'mtPreview', URL_PARAM.card, String(next), 'mtCard');
     else pushParam(URL_PARAM.card, String(next), 'mtCard');
   }, []);
 

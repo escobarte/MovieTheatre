@@ -10,6 +10,16 @@
 
 <!-- Новые записи добавляются ниже этой строки, каждая сверху -->
 
+## 2026-11-23
+Поиск TMDB: клик или Enter по результату открывает поп-ап со сведениями, как в карточке
+(`GET /api/search/preview`, без записи в базу; скелетон, ошибка, «Добавить» и «Закрыть»),
+своим шагом истории `?p=` — Esc и «Назад» закрывают сначала его, потом поиск.
+Карточка после добавления: «Добавлено» · «На Главную» · «Добавить ещё» (поиск с пустым полем).
+Файлы: app/api/search/preview/route.ts, lib/preview.ts, components/SearchPreview.tsx,
+components/movie-view.tsx, components/SearchOverlay.tsx, components/SearchProvider.tsx,
+components/CardProvider.tsx, components/MovieCard.tsx, components/url-state.ts,
+components/layers.ts, docs/SPEC.md, docs/STATE.md, docs/CHANGELOG.md
+
 ## 2026-11-22 (5)
 «Статистика»: полоса диска — заполнение (занято / объём, 0–100%, `--sky`, от 90% —
 `--orange`), а не доля записей от максимума; «подсчёт неполный», если у части записей

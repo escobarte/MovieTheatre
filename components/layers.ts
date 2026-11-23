@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef } from 'react';
 
 /**
  * Esc закрывает только верхний открытый слой (5.11): выпадающий список →
- * окно «В список» и подтверждения в карточке → карточка → оверлей поиска.
+ * окно «В список» и подтверждения в карточке → карточка → поп-ап
+ * предпросмотра в поиске → оверлей поиска.
  * «Верхний» — по рангу, а не по времени открытия: так порядок не зависит
  * от того, что открыли раньше. Один слушатель на документ на всех.
  */
-export const LAYER = { search: 10, card: 20, dialog: 30, dropdown: 40 } as const;
+export const LAYER = { search: 10, preview: 15, card: 20, dialog: 30, dropdown: 40 } as const;
 
 type Layer = { rank: number; order: number; close: () => void };
 
