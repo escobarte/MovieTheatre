@@ -1,31 +1,20 @@
 'use client';
 
-import { Image as ImageIcon, Plus, Search, SmilePlus, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Search, SmilePlus, X } from 'lucide-react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { entriesWord, type Entry } from '@/lib/collection';
+import type { PersonHit } from '@/lib/person';
 import { searchEntries, searchTitles } from '@/lib/search';
 
 import { useCard } from './CardProvider';
 import { useCollection } from './CollectionProvider';
 import { LAYER, useLayer } from './layers';
 import { useLists, type MovieList } from './ListsProvider';
+import { PeopleBlock, PersonView, creditTitle } from './SearchPerson';
 import { type AddOutcome, SearchPreview } from './SearchPreview';
+import { type Candidate, CandidateRow, Thumb, candidateKey } from './SearchRows';
 import { URL_PARAM, pushParam, replaceParam, useCloseParam, useUrlParam } from './url-state';
-
-type Candidate = {
-  tmdbId: number;
-  kind: 'movie' | 'tv';
-  title: string;
-  originalTitle: string | null;
-  year: number | null;
-  posterUrl: string | null;
-  director: string | null;
-  added: boolean;
-};
-
-/** Ключ кандидата: tmdbId у фильма и сериала может совпасть. */
-const candidateKey = (c: Pick<Candidate, 'kind' | 'tmdbId'>) => `${c.kind}-${c.tmdbId}`;
 
 /** ?p=movie-603 → { kind, tmdbId }. */
 function parsePreview(value: string | null): Pick<Candidate, 'kind' | 'tmdbId'> | null {
@@ -37,6 +26,7 @@ function parsePreview(value: string | null): Pick<Candidate, 'kind' | 'tmdbId'> 
 type Row =
   | { kind: 'entry'; entry: Entry }
   | { kind: 'list'; list: MovieList }
+  | { kind: 'person'; person: PersonHit }
   | { kind: 'candidate'; candidate: Candidate };
 
 /**
@@ -62,10 +52,16 @@ export function SearchOverlay({
 
   const [query, setQuery] = useState('');
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [people, setPeople] = useState<PersonHit[]>([]);
   const [searching, setSearching] = useState(false);
+  // Добавленное в этой сессии окна: отметка «в коллекции» в фильмографии.
+  const [addedKeys, setAddedKeys] = useState<Set<string>>(() => new Set());
+  const [openedPerson, setOpenedPerson] = useState<PersonHit | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [cursor, setCursor] = useState(0);
   const input = useRef<HTMLInputElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  const savedScroll = useRef(0);
 
   useLayer(LAYER.search, true, onClose);
 
@@ -76,18 +72,44 @@ export function SearchOverlay({
     ? candidates.find((c) => c.kind === preview.kind && c.tmdbId === preview.tmdbId)
     : undefined;
 
+  const personParam = useUrlParam(URL_PARAM.person);
+  const personId = personParam !== null && /^\d+$/.test(personParam) ? Number(personParam) : null;
+  const closePerson = useCloseParam(URL_PARAM.person, 'mtPerson', personParam);
+  const personHit = personId !== null && openedPerson?.id === personId ? openedPerson : null;
+
+  // Фильмография занимает то же окно: поиск под ней скрыт, но не размонтирован
+  // (запрос и выдача остаются). Прокрутка выдачи запоминается и возвращается.
+  const personOpen = personId !== null;
+  useLayoutEffect(() => {
+    const box = scroller.current;
+    if (!box) return;
+    if (personOpen) box.scrollTop = 0;
+    else box.scrollTop = savedScroll.current;
+  }, [personOpen]);
+
   // Поп-ап открыт с клавиатуры — после закрытия фокус возвращается в поле,
   // чтобы снова работали ↑ ↓ и Enter. После касания — нет: на телефоне
   // это подняло бы клавиатуру.
   const byKeyboard = useRef(false);
   const previewOpen = preview !== null;
   useEffect(() => {
-    if (previewOpen || !byKeyboard.current) return;
+    if (previewOpen || personOpen || !byKeyboard.current) return;
     byKeyboard.current = false;
     // Поп-ап сменился карточкой после добавления — фокус остаётся в ней.
     if (new URLSearchParams(window.location.search).has(URL_PARAM.card)) return;
     input.current?.focus({ preventScroll: true });
-  }, [previewOpen]);
+  }, [previewOpen, personOpen]);
+
+  const openPerson = (person: PersonHit, keyboard = false) => {
+    byKeyboard.current = keyboard;
+    savedScroll.current = scroller.current?.scrollTop ?? 0;
+    setOpenedPerson(person);
+    if (new URLSearchParams(window.location.search).has(URL_PARAM.person)) {
+      replaceParam(URL_PARAM.person, String(person.id));
+    } else {
+      pushParam(URL_PARAM.person, String(person.id), 'mtPerson');
+    }
+  };
 
   const openPreview = (candidate: Candidate, keyboard = false) => {
     byKeyboard.current = keyboard;
@@ -117,29 +139,66 @@ export function SearchOverlay({
     }
 
     setSearching(true);
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+          signal: controller.signal,
+        });
         const data = await res.json();
         setCandidates(res.ok ? data.results : []);
-      } catch {
+        setSearching(false);
+      } catch (error) {
+        if ((error as Error).name === 'AbortError') return;
         setCandidates([]);
-      } finally {
         setSearching(false);
       }
     }, 350);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query, wantTmdb]);
+
+  // Люди — отдельным запросом и параллельно фильмам: блок появляется, когда
+  // ответит, и показ фильмов не задерживает. От трёх символов.
+  useEffect(() => {
+    if (!wantTmdb || query.trim().length < 3) {
+      setPeople([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search/person?q=${encodeURIComponent(query)}`, {
+          signal: controller.signal,
+        });
+        const data = await res.json();
+        setPeople(res.ok ? data.people : []);
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') setPeople([]);
+      }
+    }, 350);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [query, wantTmdb]);
 
   const rows: Row[] = [
     ...movies.map((entry) => ({ kind: 'entry' as const, entry })),
     ...series.map((entry) => ({ kind: 'entry' as const, entry })),
     ...foundLists.map((list) => ({ kind: 'list' as const, list })),
+    ...people.map((person) => ({ kind: 'person' as const, person })),
     ...candidates.map((candidate) => ({ kind: 'candidate' as const, candidate })),
   ];
 
   useEffect(() => setCursor(0), [query]);
+  // Людей может стать меньше, пока курсор стоит на последнем.
+  useEffect(() => setCursor((c) => Math.min(c, Math.max(rows.length - 1, 0))), [rows.length]);
 
   /**
    * Одно добавление на строку и поп-ап. Дубликаты отсекает сервер (409 —
@@ -147,10 +206,12 @@ export function SearchOverlay({
    * открывается. Отметка — по tmdbId, как и проверка на сервере.
    */
   async function add(candidate: Pick<Candidate, 'kind' | 'tmdbId'>): Promise<AddOutcome> {
-    const markAdded = () =>
+    const markAdded = () => {
       setCandidates((prev) =>
         prev.map((c) => (c.tmdbId === candidate.tmdbId ? { ...c, added: true } : c)),
       );
+      setAddedKeys((prev) => new Set(prev).add(candidateKey(candidate)));
+    };
 
     setBusy(candidateKey(candidate));
     try {
@@ -185,6 +246,8 @@ export function SearchOverlay({
     if (!row) return;
     if (row.kind === 'entry') {
       openCard(row.entry.id);
+    } else if (row.kind === 'person') {
+      openPerson(row.person, keyboard);
     } else if (row.kind === 'list') {
       window.location.href = `/spiski/${row.list.id}`;
     } else {
@@ -193,7 +256,7 @@ export function SearchOverlay({
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
-    if (previewOpen) return;
+    if (previewOpen || personOpen) return;
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       setCursor((c) => Math.min(c + 1, rows.length - 1));
@@ -213,10 +276,24 @@ export function SearchOverlay({
     <>
       <div
         onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+        ref={scroller}
         className="fixed inset-0 z-50 overflow-y-auto bg-bg/95 p-4 sm:p-8"
         onKeyDown={onKeyDown}
       >
-        <div className="mx-auto w-full max-w-[720px]">
+        {personId !== null && (
+          <PersonView
+            key={personId}
+            id={personId}
+            hit={personHit}
+            isAdded={(key) => addedKeys.has(key)}
+            busyKey={busy}
+            onOpen={(candidate) => openPreview(candidate)}
+            onAdd={(candidate) => void add(candidate)}
+            onBack={closePerson}
+          />
+        )}
+
+        <div hidden={personOpen} className="mx-auto w-full max-w-[720px]">
           <div className="flex items-center gap-[14px] rounded-md bg-surface px-[18px] py-4">
             <Search size={20} strokeWidth={1.5} className="shrink-0 text-text-3" />
             <input
@@ -306,7 +383,7 @@ export function SearchOverlay({
 
               {searching && <p className="mt-[9px] px-3 text-[12.5px] text-text-3">Ищу в TMDB</p>}
 
-              {!searching && candidates.length === 0 && (
+              {!searching && candidates.length === 0 && people.length === 0 && (
                 <div className="mt-[9px] rounded-md bg-surface p-[26px] text-center">
                   <p className="text-[14px] font-medium">Нигде не нашлось</p>
                   <p className="mt-[5px] text-[12.5px] text-text-3">
@@ -315,6 +392,12 @@ export function SearchOverlay({
                   </p>
                 </div>
               )}
+
+              <PeopleBlock
+                people={people}
+                activeId={rows[cursor]?.kind === 'person' ? (rows[cursor] as { person: PersonHit }).person.id : null}
+                onOpen={openPerson}
+              />
 
               <div className="mt-[9px]">
                 {candidates.map((candidate) => (
@@ -346,8 +429,8 @@ export function SearchOverlay({
           key={candidateKey(preview)}
           kind={preview.kind}
           tmdbId={preview.tmdbId}
-          title={previewed?.title ?? null}
-          added={previewed?.added ?? false}
+          title={previewed?.title ?? (personId !== null ? creditTitle(personId, candidateKey(preview)) : null)}
+          added={previewed?.added ?? addedKeys.has(candidateKey(preview))}
           busy={busy === candidateKey(preview)}
           onAdd={() => add(preview)}
           onClose={closePreview}
@@ -361,6 +444,7 @@ function sameRow(a: Row, b: Row): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'entry' && b.kind === 'entry') return a.entry.id === b.entry.id;
   if (a.kind === 'list' && b.kind === 'list') return a.list.id === b.list.id;
+  if (a.kind === 'person' && b.kind === 'person') return a.person.id === b.person.id;
   if (a.kind === 'candidate' && b.kind === 'candidate')
     return candidateKey(a.candidate) === candidateKey(b.candidate);
   return false;
@@ -395,19 +479,6 @@ function Group({
   );
 }
 
-function Thumb({ url }: { url: string | null }) {
-  return (
-    <span className="flex h-[57px] w-[38px] shrink-0 items-center justify-center overflow-hidden rounded-xs bg-surface-2 text-icon-dim">
-      {url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" loading="lazy" className="h-full w-full object-cover" />
-      ) : (
-        <ImageIcon size={16} strokeWidth={1.5} />
-      )}
-    </span>
-  );
-}
-
 function EntryRow({
   entry,
   active,
@@ -433,74 +504,5 @@ function EntryRow({
         <span className="mt-[3px] block truncate text-[12px] text-text-3">{meta || '—'}</span>
       </span>
     </button>
-  );
-}
-
-/**
- * Строка результата TMDB. Клик или касание в любом месте, кроме «Добавить»,
- * открывает поп-ап со сведениями; сама строка-кнопка — для Tab и Enter.
- */
-function CandidateRow({
-  candidate,
-  busy,
-  active,
-  onOpen,
-  onAdd,
-}: {
-  candidate: Candidate;
-  busy: boolean;
-  active: boolean;
-  onOpen: () => void;
-  onAdd: () => void;
-}) {
-  const meta = [
-    candidate.year,
-    candidate.kind === 'tv' ? 'сериал' : candidate.originalTitle,
-    candidate.director,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
-  return (
-    <div
-      onClick={onOpen}
-      className={`flex cursor-pointer items-center gap-[14px] rounded-sm px-3 py-[11px] transition-colors duration-[120ms] hover:bg-surface ${
-        active ? 'bg-surface' : ''
-      }`}
-    >
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onOpen();
-        }}
-        aria-haspopup="dialog"
-        className="flex min-w-0 flex-1 items-center gap-[14px] rounded-xs text-left"
-      >
-        <Thumb url={candidate.posterUrl} />
-
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14px] font-medium">{candidate.title}</span>
-          <span className="mt-[3px] block truncate text-[12px] text-text-3">{meta || '—'}</span>
-        </span>
-      </button>
-
-      {candidate.added ? (
-        <span className="text-[12.5px] text-text-3">в коллекции</span>
-      ) : (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onAdd();
-          }}
-          disabled={busy}
-          className="inline-flex items-center gap-[6px] rounded-pill bg-red px-[16px] py-[8px] text-[12.5px] font-medium text-white transition-colors duration-[120ms] hover:bg-red-hover disabled:opacity-60"
-        >
-          <Plus size={14} strokeWidth={1.5} />
-          {busy ? 'Тяну…' : 'Добавить'}
-        </button>
-      )}
-    </div>
   );
 }

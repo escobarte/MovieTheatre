@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * Карточка и поиск живут в адресе (5.7): ?m=<id> и ?search=1|add, поп-ап
- * предпросмотра результата TMDB поверх поиска — ?p=<kind>-<tmdbId> (5.8). Открытие
+ * предпросмотра результата TMDB поверх поиска — ?p=<kind>-<tmdbId> (5.8),
+ * фильмография человека в том же окне — ?person=<tmdbPersonId> (5.5). Открытие
  * кладёт шаг в историю — «Назад» (в том числе системная на Android и в
  * установленном приложении) закрывает слой. Закрытие из интерфейса идёт
  * через history.back(), если шаг положили мы, иначе параметр убирается
@@ -16,8 +17,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * (useSearchParams видит новый адрес).
  */
 
-export const URL_PARAM = { card: 'm', search: 'search', preview: 'p' } as const;
-export type Marker = 'mtCard' | 'mtSearch' | 'mtPreview';
+export const URL_PARAM = { card: 'm', search: 'search', preview: 'p', person: 'person' } as const;
+export type Marker = 'mtCard' | 'mtSearch' | 'mtPreview' | 'mtPerson';
 
 const CHANGE = 'mt:url';
 
@@ -37,6 +38,7 @@ function ownMarkers(): Partial<Record<Marker, true>> {
     ...(state?.mtCard ? { mtCard: true } : {}),
     ...(state?.mtSearch ? { mtSearch: true } : {}),
     ...(state?.mtPreview ? { mtPreview: true } : {}),
+    ...(state?.mtPerson ? { mtPerson: true } : {}),
   };
 }
 
@@ -76,7 +78,12 @@ export function clearLayers() {
   window.history.replaceState(
     {},
     '',
-    urlWith({ [URL_PARAM.card]: null, [URL_PARAM.search]: null, [URL_PARAM.preview]: null }),
+    urlWith({
+      [URL_PARAM.card]: null,
+      [URL_PARAM.search]: null,
+      [URL_PARAM.preview]: null,
+      [URL_PARAM.person]: null,
+    }),
   );
   window.dispatchEvent(new Event(CHANGE));
 }

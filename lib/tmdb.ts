@@ -1,11 +1,13 @@
 import 'server-only';
 
 import type { Kind } from './db/schema';
+import type { Credit, Department, PersonHit } from './person';
 
 const BASE = 'https://api.themoviedb.org/3';
 const IMG = 'https://image.tmdb.org/t/p';
 
 export const POSTER_URL = (path: string) => `${IMG}/w500${path}`;
+export const PROFILE_URL = (path: string) => `${IMG}/w185${path}`;
 export const POSTER_MINI_URL = (path: string) => `${IMG}/w154${path}`;
 export const BACKDROP_URL = (path: string) => `${IMG}/w1280${path}`;
 
@@ -286,4 +288,139 @@ export async function resolveCountries(countries?: Country[] | null): Promise<st
       (countries ?? []).find((c) => c.iso_3166_1 === code)?.name ??
       code,
   );
+}
+
+/* ─── Люди ───────────────────────────────────────────────────────────── */
+
+type PersonRaw = {
+  id: number;
+  name?: string;
+  profile_path?: string | null;
+  known_for_department?: string;
+};
+
+function toHit(p: PersonRaw): PersonHit {
+  const dep = p.known_for_department;
+  const department: Department =
+    dep === 'Acting' ? 'actor' : dep === 'Directing' ? 'director' : 'other';
+  return {
+    id: p.id,
+    name: p.name ?? '',
+    photoUrl: p.profile_path ? PROFILE_URL(p.profile_path) : null,
+    department,
+  };
+}
+
+/** /search/person, ru-RU: до трёх человек. Никаких дополнительных запросов. */
+export async function searchPeople(query: string, limit = 3): Promise<PersonHit[]> {
+  const data = await tmdb<{ results?: PersonRaw[] }>('/search/person', {
+    query,
+    include_adult: 'false',
+  });
+  return (data.results ?? [])
+    .filter((p) => p.name)
+    .slice(0, limit)
+    .map(toHit);
+}
+
+type CreditRaw = {
+  id: number;
+  media_type?: string;
+  title?: string;
+  name?: string;
+  original_title?: string;
+  original_name?: string;
+  release_date?: string;
+  first_air_date?: string;
+  poster_path?: string | null;
+  popularity?: number;
+  genre_ids?: number[];
+  character?: string;
+  job?: string;
+  episode_count?: number;
+};
+
+/** Жанры TMDB: документальное, новости, реалити, ток-шоу. */
+const GENRE_DOC = 99;
+const GENRES_TV_NOISE = [10763, 10764, 10767];
+/** Минимум серий, чтобы работа в сериале не считалась эпизодической. */
+const MIN_EPISODES = 3;
+
+const SELF_ROLE = /(^|[^\p{L}])(self|himself|herself|themselves|себя|сам|сама|сами)([^\p{L}]|$)/iu;
+const CEREMONY =
+  /(academy awards|oscars?|golden globe|emmy|bafta|grammy|mtv|церемони|премия|премии|оскар|золотой глобус)/i;
+
+/**
+ * Фильмография одного человека: /person/{id} с combined_credits, ru-RU.
+ * Отсеивается шум: без постера или года, документальное, ток-шоу, новости,
+ * реалити, «самого себя» и церемонии, эпизодические роли в сериалах (меньше
+ * трёх серий), повторы одной работы в нескольких ролях. Сортировка — по
+ * популярности, при равенстве новее выше. Режиссёру — только job = Director.
+ * Кинопоиск не трогается.
+ */
+export async function getPersonCredits(
+  id: number,
+): Promise<{ person: PersonHit; actor: Credit[]; director: Credit[] }> {
+  const data = await tmdb<
+    PersonRaw & { combined_credits?: { cast?: CreditRaw[]; crew?: CreditRaw[] } }
+  >(`/person/${id}`, { append_to_response: 'combined_credits' });
+
+  const credits = data.combined_credits ?? {};
+
+  const actor = build(
+    (credits.cast ?? []).filter((c) => !isNoise(c, true)),
+  );
+  const director = build((credits.crew ?? []).filter((c) => c.job === 'Director' && !isNoise(c, false)));
+
+  return { person: toHit(data), actor, director };
+}
+
+function isNoise(c: CreditRaw, asActor: boolean): boolean {
+  if (c.media_type !== 'movie' && c.media_type !== 'tv') return true;
+  const genres = c.genre_ids ?? [];
+  const tv = c.media_type === 'tv';
+  const date = tv ? c.first_air_date : c.release_date;
+
+  if (!c.poster_path || !yearOf(date)) return true;
+  if (tv && c.episode_count !== undefined && c.episode_count < MIN_EPISODES) return true;
+  if (genres.some((g) => GENRES_TV_NOISE.includes(g))) return true;
+
+  if (asActor) {
+    if (genres.includes(GENRE_DOC)) return true;
+    if (c.character && SELF_ROLE.test(c.character)) {
+      // «Он сам» в художественном кино бывает (камео) — оставляем; в сериалах
+      // и на церемониях это гостевое появление.
+      const title = (tv ? c.name : c.title) ?? '';
+      if (tv || CEREMONY.test(title)) return true;
+    }
+  }
+  return false;
+}
+
+function build(raw: CreditRaw[]): Credit[] {
+  const byKey = new Map<string, { credit: Credit; popularity: number }>();
+
+  for (const c of raw) {
+    const kind: Kind = c.media_type === 'tv' ? 'tv' : 'movie';
+    const key = `${kind}-${c.id}`;
+    if (byKey.has(key)) continue;
+
+    byKey.set(key, {
+      popularity: c.popularity ?? 0,
+      credit: {
+        tmdbId: c.id,
+        kind,
+        title: (kind === 'tv' ? c.name : c.title) ?? c.original_name ?? c.original_title ?? '',
+        originalTitle: (kind === 'tv' ? c.original_name : c.original_title) ?? null,
+        year: yearOf(kind === 'tv' ? c.first_air_date : c.release_date),
+        posterUrl: c.poster_path ? POSTER_MINI_URL(c.poster_path) : null,
+        director: null,
+      },
+    });
+  }
+
+  return [...byKey.values()]
+    .sort((a, b) => b.popularity - a.popularity || (b.credit.year ?? 0) - (a.credit.year ?? 0))
+    .map((x) => x.credit)
+    .slice(0, 300);
 }
